@@ -28,6 +28,9 @@
       }
     },
     "Workspace": {
+      "WorkSpaceFolder": {
+        "$path" : "src/WorkSpace"
+      },
       "$properties": {
         "FilteringEnabled": true
       },
