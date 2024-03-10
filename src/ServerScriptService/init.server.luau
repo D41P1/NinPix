@@ -1,1 +1,5 @@
-print("Hello world, from server!")
+local Players = game:GetService("Players")
+
+Players.PlayerAdded:Connect(function(player)
+    
+end)
