@@ -5,12 +5,14 @@
     ModuleScript Format:
     local CharacterEvents -- events made from the Character Controller script   
     local MovementEvent: Unreliable -- CharacterEvents.MovementEvent  
-    
+    local Movement_Util
+    local Event_Manager 
     local InputHandler = {}
     inputtable = {
         W = function()
-            -- calculate the Direction: Vector3 they wanna move using the x and z of the camera
+            -- calculate Direction = Movement_Util:GetDirection("W")
             -- write direction to buffer
+
             MovementEvent:FireServer(buffer)
         end
     } -- could be a submodule
@@ -26,3 +28,4 @@
     end)
     return InputHandler
 ]]
+

@@ -11,7 +11,5 @@ end)
         clone scripts
         enable the scripts 
         and parent to the WorkSpaceFolder
-    }
-
-
+    } 
 ]]

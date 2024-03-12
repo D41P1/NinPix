@@ -14,13 +14,7 @@ when player added  {
         Accessory? = 3     
     } etc
     save the a clone of the character in a table for the Respawn function
-    
 }
-
-
-
 Start Init input handler
-
-
 ]]
 
