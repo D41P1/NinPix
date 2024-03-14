@@ -5,14 +5,11 @@
     local Connections: { [String]: () -> nil? } = {
         MovementEvent = function(DirectionBuffer: Buffer)
             -- all the checks
-            local Check = 
+            
         end
     }
     function Character_Controller:(Events: TableOfEvents)
-        for 
-
-        loop 
-
+        for   loop - connect everything etc
     end
     return Character_Controller
 ]]
