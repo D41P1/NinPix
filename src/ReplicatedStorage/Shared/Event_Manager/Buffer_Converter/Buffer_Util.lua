@@ -14,11 +14,11 @@
 ]]
 
 
-local types = require(script.Parent.types)
+local types = require(script.Parent.Parent.types)
 
-local size: number
-local cursor: number
-local buff: buffer
+local size
+local cursor 
+local buff
 local references: { [number]: unknown }
 
 -- There are not fastcalls for copy and create, so this is slightly faster.
@@ -26,12 +26,13 @@ local bufferCopy = buffer.copy
 local bufferCreate = buffer.create
 
 local function alloc(bytes: number)
+	if not cursor then  cursor = 0; size = 12 end
 	if not (cursor + bytes >= size) then
 		return
 	end
-
 	size = math.round(size * 1.5)
-
+	
+	if not buff then buff =  buffer.create(size) end	
 	local newBuffer = bufferCreate(size)
 	bufferCopy(newBuffer, 0, buff)
 
@@ -71,76 +72,89 @@ end
 function bufferWriter.writeReference(value: any)
 	table.insert(references, value)
 	local index = #references
-
 	buffer.writeu8(buff, cursor, index)
 	cursor += 1
-	print(references)
 end
 
 function bufferWriter.writeu16(value: number)
 	alloc(2)
 	buffer.writeu16(buff, cursor, value)
 	cursor += 2
+	return  buff
 end
 
 function bufferWriter.writei16(value: number)
 	alloc(2)
 	buffer.writeu16(buff, cursor, value)
 	cursor += 2
+	return  buff
 end
 
 function bufferWriter.writeu32(value: number)
 	alloc(4)
 	buffer.writeu32(buff, cursor, value)
 	cursor += 4
+	return  buff
 end
 
 function bufferWriter.writestring(value: string)
 	buffer.writestring(buff, cursor, value)
 	cursor += string.len(value)
+	return  buff
 end
 
 function bufferWriter.writei32(value: number)
 	alloc(4)
 	buffer.writei32(buff, cursor, value)
 	cursor += 4
+	return  buff
 end
 
 function bufferWriter.writef32NoAlloc(value: number)
 	buffer.writef32(buff, cursor, value)
 	cursor += 4
+	return  buff
 end
 
 function bufferWriter.writef64NoAlloc(value: number)
 	buffer.writef64(buff, cursor, value)
 	cursor += 4
+	return  buff
 end
 
 function bufferWriter.writef32(value: number)
 	alloc(4)
 	buffer.writef32(buff, cursor, value)
 	cursor += 4
+	return  buff
 end
 
 function bufferWriter.writef64(value: number)
 	alloc(8)
 	buffer.writef64(buff, cursor, value)
 	cursor += 8
+	return  buff
 end
 
 function bufferWriter.writecopy(value)
 	buffer.copy(buff, cursor, value)
 	cursor += buffer.len(value)
+	return  buff
 end
 
 function bufferWriter.writebool(val: boolean)
 	alloc(1)
 	buffer.writeu8(buff, cursor, if val then 1 else 0)
 	cursor += 1
+	return  buff
 end
 -- id: number, writer: (value: any) -> (), data: { [string]: any })
 
 function bufferWriter.writePacket(channel: types.channelData, id, writer:(... any) -> (... any), data)
+	--[[TODO
+	not accurate
+	]]
+
 	size = channel.size
 	cursor = channel.cursor
 	references = channel.references
@@ -159,6 +173,11 @@ function bufferWriter.writePacket(channel: types.channelData, id, writer:(... an
 	return channel
 end
 
-function bufferWriter.GetBuff() return buff end
+function bufferWriter:GetBuff() return buff end
+function bufferWriter:ClearBuff() 
+	buff = nil 
+	cursor = nil
+	size = nil
+end
 
 return bufferWriter
