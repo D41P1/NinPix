@@ -14,6 +14,7 @@
         "$path": "src/ServerScriptService"
       }
     },
+    
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "Client": {
@@ -27,6 +28,9 @@
       }
     },
     "Workspace": {
+      "WorkSpaceFolder": {
+        "$path" : "src/WorkSpace"
+      },
       "$properties": {
         "FilteringEnabled": true
       },
