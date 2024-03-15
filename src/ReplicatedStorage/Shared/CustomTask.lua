@@ -36,18 +36,30 @@ Motor.Part0 = AnimBox
 AnimationController.Parent = AnimBox
 Animator.Parent = AnimationController
 
-local SimulateDelay = Animator:LoadAnimation(OneFrameAnim)
---f
+
 local Task = {}
+local SimulateDelay = Animator:LoadAnimation(OneFrameAnim)	
 
 function Task.Delay(DelayTime: number, Function: () -> any, ...: any)
 	local Args = {...}
+	local SimulateDelay = Animator:LoadAnimation(OneFrameAnim)	
 	SimulateDelay:Play()
 	SimulateDelay:AdjustSpeed(1/DelayTime)
-	SimulateDelay.KeyframeReached:Connect(function(keyframeName: string)  Function(unpack(Args)) end)
+	Task[SimulateDelay] =  SimulateDelay.KeyframeReached:Connect(function(keyframeName: string)  Function(unpack(Args)) end)
 end
+
+function Task.Cancel(Thread: AnimationTrack)
+	local ValidThread: RBXScriptConnection? = Task[Thread]
+	if not ValidThread then return	 end
+	Thread:Stop() 
+	Thread:Destroy()
+	ValidThread:Disconnect()
+	ValidThread = nil
+end	
 
 -- this is purely to load the anim cos apparently the first use of the anim is laggy
 SimulateDelay:Play()
-SimulateDelay:AdjustSpeed(50)
+SimulateDelay:AdjustSpeed(150)
+
 return Task
+
