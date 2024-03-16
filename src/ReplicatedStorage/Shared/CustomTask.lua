@@ -40,7 +40,7 @@ Animator.Parent = AnimationController
 local Task = {}
 local SimulateDelay = Animator:LoadAnimation(OneFrameAnim)	
 
-function Task.Delay(DelayTime: number, Function: () -> any, ...: any)
+function Task.Delay(DelayTime: number, Function: (... any) -> any, ...: any)
 	local Args = {...}
 	local SimulateDelay = Animator:LoadAnimation(OneFrameAnim)	
 	SimulateDelay:Play()

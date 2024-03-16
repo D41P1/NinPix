@@ -1,3 +1,7 @@
+local player = game.Players.LocalPlayer
+local ClientHandler = script.Parent.Client_Handler:Clone()
+ClientHandler.Parent = player:WaitForChild("PlayerScripts")
+ClientHandler.Enabled = true
 --[[
 when player added  {
     make a player added connection await the attribute "SpawnLocation" from the server
