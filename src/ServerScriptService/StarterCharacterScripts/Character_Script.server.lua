@@ -5,9 +5,20 @@ if not script.Parent:IsA("Actor") then
    CharacterActor.Parent = CharacterActors 
    script.Parent = CharacterActor
 end
-
+--[[ Events
+    W,
+    A,
+    S,
+    D
+    Jump,
+    M1,
+    M2,
+    F
+]]
 --[[
     create Actor(s) parent to Actors Folder
-    CharacterEvents
+    Create CharacterEvents  
+    init CustomHumanoid
     connect functions to events through Character_Controller Module
+    init attributes
 ]]

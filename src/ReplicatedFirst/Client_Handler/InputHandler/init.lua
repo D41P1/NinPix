@@ -1,3 +1,11 @@
+--[[ Info
+This module handles Clients inputs only when they are spawned 
+Connect to the CharacterEvents when Spawning in
+]]
+--[[Modules needed
+Event_Manager 
+Movement_Handler
+]]
 --[[
     Current Inputs: {
         Movement: W A S D
@@ -5,7 +13,7 @@
     ModuleScript Format:
     local CharacterEvents -- events made from the Character Controller script   
     local MovementEvent: Unreliable -- CharacterEvents.MovementEvent  
-    local Movement_Util
+    local Movement_Handler
     local Event_Manager 
     //////////////////////////////////////MODULESCRIPT./////////////////////////
     local Inputlogic = require(script.MovementHandler)

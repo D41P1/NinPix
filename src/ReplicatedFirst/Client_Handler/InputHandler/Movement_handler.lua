@@ -5,14 +5,24 @@
         Current plan is using +-CameraCFrame.{RightVector} to represent the A,D
         -- get the x and z only and use Character Y-----------------
         -- -1000 offset must be the same because of pythag and to get Accurate diagonal movement
-        W = ((cameraCFrame * CFrame.new(0, 1, -1000)).Position - CharacterPos).Unit 
-        S = (cameraCFrame.Positon - CharacterPos).Unit
-        A = CharacterPos + (cameraCFrame.RightVector * -1000)
-        D = CharacterPos + (cameraCFrame.RightVector * 1000)
-        WA = (( (W + A) / 2) - CharacterPos).Unit -- (MidPoint of W and A - CharacterPos).Unit 
-        WD = (( (W + D) / 2) - CharacterPos).Unit  
-        SD = (( (S + A) / 2) - CharacterPos).Unit  
-        SD = (( (S + D) / 2) - CharacterPos).Unit  
+        W = RayMovement_Manager(CustomHumanoidState, W)
+        A =  RayMovement_Manager(CustomHumanoidState, A)
+        S =  RayMovement_Manager(CustomHumanoidState, S)
+        D = RayMovement_Manager(CustomHumanoidState, D)
+        
+        WA =  RayMovement_Manager(CustomHumanoidState, WA)
+        WD =  RayMovement_Manager(CustomHumanoidState, WD)
+        
+        SA =    RayMovement_Manager(CustomHumanoidState, SA)
+        SD =  RayMovement_Manager(CustomHumanoidState, SD)
+
+        AW =  RayMovement_Manager(CustomHumanoidState, WA)
+        AS =  RayMovement_Manager(CustomHumanoidState, SA)
+        
+        DW =  RayMovement_Manager(CustomHumanoidState, WD)
+        DS =  RayMovement_Manager(CustomHumanoidState, SD)
+
+
         --------------------------------------------------
         --The reason for the Y offset is in the case they decide the wanna look { birds-eye | worms-eye }view or OverView/UnderView        
         return Direction

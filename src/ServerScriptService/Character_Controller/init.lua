@@ -1,5 +1,8 @@
+--[[Info
+This module is for Handling All Player Characters (Managing inputs, verifying them, relaying them to other clients etc)
+]]
+
 --[[
-    
     local Character_Controller = {}
     type TableOfEvents = { [string]: Unreliable | Reliable }
     local Connections: { [String]: () -> nil? } = {

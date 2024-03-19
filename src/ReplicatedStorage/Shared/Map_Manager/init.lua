@@ -12,15 +12,15 @@ Map: {
 ]]
 
 --[[InFo
-we using a HexaDecatree (16) which should leave each partition as 250x250 
-Map is 4000x4000
-A Section is 2000x2000
-A partition is 250x250
+we using a HexaDecatree (8) which should leave each partition as 250x250 
+Map is 4096x4096
+A Section is 2048x2048
+A Hexdeca partition is 256x256
 64 partitions total per section
 4 partitions rendered at all times simulating 500 stud radius rendering
-A column in a section is 4
-A row in a Section is 16 (16x4 = 64)
+Total Columns,Rows in a section is 8 (8x8 = 64)
 ]]
+
 --[[ ///////////////////////////////////////////////////////TODO//////////////////////////////////////////////////////////////////
 method for the CLient Init of the Map Dictionary 
 Same for the server but do not need the values only SizeValue(Vector3Value) and the partitioncentrePos
@@ -41,20 +41,25 @@ local Map = {
         }
         
     }  
+]]  
+--[[ equations
+-- y/2 - y/32 = n
+where n is an multiple of 8 
+--y = 32(8k)/15 = 256k/15 where k is an integer
 ]]
 
 --[[ Client nearest9Partitions
     function find nearest9Partitions(SectionNum , PartitionNumber)
-
-        -- PartitionNumber - 16 if check >64 then new section  (North)
-        -- PartitionNumber - 16 - 1 if check >64 then new section (NorthWest)
-        -- PartitionNumber - 1  (West) if check >64 then new section 
-        -- PartitionNumber - 16 + 1 if check >64 then new section (NorthEast)
+        section = 8x8
+        -- PartitionNumber - 8 if check <0 then new section?  (North)
+        -- PartitionNumber -8 -1 if check <0 then new section? (NorthWest)
+        -- PartitionNumber -1  if check <0 then new section? (West) 
+        -- PartitionNumber -8 +1 if check <0 then new section? (NorthEast)
         
-        -- PartitionNumber + 16 if check >64 then new section (south)
-        -- PartitionNumber + 16 + 1 if check >64 then new section (SouthEast)
-        -- PartitionNumber + 16 - 1 if check >64 then new section (SouthWest)
-        -- PartitionNumber + 1 (East) if check >64 then new section 
+        -- PartitionNumber +8 if check >64 then new section? (south)
+        -- PartitionNumber +8 +1 if check >64 then new section? (SouthEast)
+        -- PartitionNumber +8 -1 if check >64 then new section? (SouthWest)
+        -- PartitionNumber +1  if check >64 then new section?  (East)
         -- PartitionNumber
         -- Add in a dictionary  
         -- forloop through this dictionary and get the PartitionCentrePos from MapDictionary Using SectionNum
@@ -99,15 +104,25 @@ local Map = {
             end
         end
         if 50 studs away from centre then Unrender all other partitions so the only the single is rendered
+        if 350 studs away change PositionPointOfCalculation to the new nearest Partition (should be ~150 studs away)
     end
 ]]
 --[[Client
     -- for loop the Map, Sections, Partitions. Gathering each folder and create a dictionary
     -- For Partitions {
-        Centre Points of the Partitions{
-            Calculate from 0,0,0 to -2000x , 2000z,  (section 1, partition 1)  
-            then Partition 2 = -1750x, 2000z etc until 0, 2000z 
-            partition 17 = -2000x, 1750z etc
+        Centre Points of the Partitions section = 8x8 {  
+            Section 1 {
+                Calculate from 0,0,0 to -1920 x , 1920 z,  (section 1, partition 1) (2000 - 256 = 1920)  
+                Partition 2 = -1664 x, 1920 z   --etc until -128, 1920z  
+                Partition 3 = -1408 x, 1920 z 
+                partition 9 = -1920 x, 1664 z 
+            }
+            Section 2 {
+                Partition 1 = 128 x, 1920 z 
+                Partition 2 = 256 x, 1920 z   
+                Partition 3 = 384 x, 1920 z
+                partition 9 = 128 x, 1664 z     
+            }
         }         
         Folders {
             1-64 holding the seriliased data for the Each Partition and whats in the partition
@@ -129,6 +144,4 @@ Save their MapLocation {
     Section: 1-4,
     Partition: 1-64 
 }
-]]
---[[Shared  
 ]]
