@@ -140,8 +140,5 @@ where n is an multiple of 8
 
 
 --[[Server
-Save their MapLocation {
-    Section: 1-4,
-    Partition: 1-64 
-}
+function to Generate hitboxes For Map
 ]]

@@ -16,14 +16,9 @@ end
 
 --[[ TODO
 --//// Init phase
-Detect the Events 
-init the Map (4000 studs 4 sections of 1000) {
-   require the map handler
-   new section renders when u are beyond 400 studs from the centre of your current section 
-   quadtree
-}
+Connect to the Data Event 
+BindMessage Actor 
 Start Init input handler
-
 --/// Inputs
 Client inputs pseudo code
 ]]

@@ -7,8 +7,14 @@ Players.PlayerAdded:Connect(function(player)
     CharacterScript:SetAttribute("PlayerName", player.Name)
     CharacterScript.Parent = CharacterActors 
     CharacterScript.Enabled = true
+    --grab data here and -> Init_Handler with Task.Delay
 end)
---[[Data Template
+--[[ Modules needed
+CustomTask
+Data_Controller
+Character_Controller
+]]
+--[[type Data Template
 {
     MapLocation = { -- spawn them at the centre of partition
         Partition: number
@@ -32,4 +38,5 @@ end)
         Clone and enable the script 
         and parent to the CharacterActorsFolder
     } 
+    
 ]]

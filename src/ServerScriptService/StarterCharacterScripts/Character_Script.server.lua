@@ -17,7 +17,7 @@ end
 ]]
 --[[
     create Actor(s) parent to Actors Folder
-    Create CharacterEvents  
+    Create CharacterEvents --Send TableOfEventNames To Character_Controller
     init CustomHumanoid
     connect functions to events through Character_Controller Module
     init attributes
