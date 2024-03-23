@@ -16,15 +16,17 @@ function HB:BoxBounds(Character:Model, Origin:CFrame, Properties: Properties)
 	local Size = Vector3.new(Properties.Width, Properties.Height, Properties.Range)
 	local SpawnPoint = Origin * CFrame.new(0, 0, (-Properties.Range/2) +1)
 	local Results:{Instance} = workspace:GetPartBoundsInBox(SpawnPoint, Size, OverParams)
+	task.synchronize()
 	if Results then return Results end		
     return	
 end
 function HB:Raycasting(Origin:Vector3,  End:Vector3,   Distance,  Filter)
 	RayParams.FilterDescendantsInstances  = Filter
 	RayParams.FilterType = Enum.RaycastFilterType.Include
-
     task.desynchronize()
 	local Dir = (End - Origin).Unit
+	
+	task.synchronize()
 	return workspace:Raycast(Origin,Dir* Distance,RayParams)
 end
 function HB:InFrontBlockCasting(Character:Model, Origin:CFrame, Properties: Properties, Filter)	
@@ -37,6 +39,7 @@ function HB:InFrontBlockCasting(Character:Model, Origin:CFrame, Properties: Prop
 	local SpawnPoint:CFrame = Origin * CFrame.new(0, 0, Properties.Range -1)
 	local RR  =  workspace:Blockcast(SpawnPoint, Size, Direction * Properties.Range, RayParams)
 
+	task.synchronize()
 	if RR and RR.Instance.Parent ~= Character then return RR end
     return
 end

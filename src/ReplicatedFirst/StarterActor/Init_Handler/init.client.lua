@@ -1,7 +1,23 @@
 local player = game.Players.LocalPlayer
-local ClientHandler = script.Parent.Parent.Client_Handler:Clone()
-ClientHandler.Parent = player:WaitForChild("PlayerScripts")
-ClientHandler.Enabled = true
+local Client_Actor 
+
+function Respawn()
+    Client_Actor = script.Parent.Parent.Client_Actor:Clone()
+    Client_Actor.Client_Handler.Enabled = true
+    Client_Actor.Parent = player:WaitForChild("PlayerScripts")    
+end 
+Respawn()
+
+player:GetAttributeChangedSignal("Health"):Connect(function()
+    local Health = player:GetAttribute("Health")
+    if Health <= 0 then 
+        Client_Actor:Destroy(); Client_Actor = nil
+        Respawn()
+     end
+end)
+
+
+
 --[[
 when player added  {
     make a player added connection await the attribute "SpawnLocation" from the server

@@ -17,11 +17,13 @@ end
 the Accuracy can be very inaccurate by amount 1 second +
 its still just as accurate as the default task.delay
 ]]
-
+-- anim asset rbxassetid://16738583705
 local AnimBox: Part
 AnimBox = workspace.CurrentCamera:FindFirstChild("Task")
 if not AnimBox then AnimBox = Instance.new("Part") end
 AnimBox.Name = "Task"
+AnimBox.Transparency = 1
+AnimBox.Anchored = true
 
 local OneFrameAnim = script["1F"] 
 local Motor = Instance.new("Motor6D")
@@ -47,7 +49,13 @@ function Task.Delay(DelayTime: number, Function: (... any) -> any, ...: any)
 	SimulateDelay:AdjustSpeed(1/DelayTime)
 	Task[SimulateDelay] =  SimulateDelay.KeyframeReached:Connect(function(keyframeName: string)  Function(unpack(Args)) end)
 end
-
+function Task.DelayParallel(DelayTime: number, Function: (... any) -> any, ...: any)
+	local Args = {...}
+	local SimulateDelay = Animator:LoadAnimation(OneFrameAnim)	
+	SimulateDelay:Play()
+	SimulateDelay:AdjustSpeed(1/DelayTime)
+	Task[SimulateDelay] =  SimulateDelay.KeyframeReached:ConnectParallel(function(keyframeName: string)  Function(unpack(Args)) end)
+end
 function Task.Cancel(Thread: AnimationTrack)
 	local ValidThread: RBXScriptConnection? = Task[Thread]
 	if not ValidThread then return	 end

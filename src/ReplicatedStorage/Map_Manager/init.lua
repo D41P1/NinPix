@@ -1,4 +1,70 @@
+local CentrePosChecks = require(script.CentrePosCheck)
 
+local Maps = {}
+local HashMapSize = {
+    NetworkHashMap =  512,
+    RenderHashMap = 256,
+    SectionHashMap = 2048
+}
+local Map_Manager = {}
+Map_Manager.GetClosestSection = CentrePosChecks.GetClosestSection
+Map_Manager.NetworkPartitionCentrePosCheck = CentrePosChecks.NetworkPartitionCentrePosCheck
+Map_Manager.RenderPartitionCentrePosCheck = CentrePosChecks.RenderPartitionCentrePosCheck
+
+export type Map = {Vector3}
+
+function Map_Manager:GetMapType(TypeOfMap: string, Size: number?)
+    local Map = Maps[TypeOfMap]
+    local SectionSize =  Size or 2048
+    if Size then
+        local TablePos =  GetSection(HashMapSize[TypeOfMap])        
+        Maps[TypeOfMap] = TablePos
+        return TablePos
+    end
+    if Map then return Map
+    else
+        local TablePos =  CreatePartitions(HashMapSize[TypeOfMap] , SectionSize)
+        Maps[TypeOfMap]  = TablePos
+        return TablePos
+    end 
+end
+function GetSection(HashMap: Map)
+    local SectionsTable = {
+        [1] = Vector3.new(-1012,0,1012),
+        [2] = Vector3.new(1012,0,1012),
+        [3] = Vector3.new(-1012,0,-1012),
+        [4] = Vector3.new(1012,0,-1012),
+    }
+    return SectionsTable
+end
+function CreatePartitions(Size: number, SectionSize: number)
+    local TableOfPos = {
+        [1] = {},
+        [2] = {},
+        [3] = {},
+        [4] = {},
+    }
+    local NumberOfPartitions = 0
+    local function MakeSection(SectionNumber: number, AxisFlipX: number, AxisFlipZ: number)
+        for Ydown = SectionSize, Size, -Size do
+            local OffsetZ = AxisFlipZ*(Ydown + -Size/2) 
+            for XAcross = SectionSize, Size/2, -Size do
+                NumberOfPartitions += 1
+                local CentrePoint = Vector3.new( AxisFlipX*(XAcross + -Size/2), 0, OffsetZ)
+                TableOfPos[SectionNumber][NumberOfPartitions] = CentrePoint
+            end
+        end
+        NumberOfPartitions = 0
+    end
+    MakeSection(1, -1, 1)
+    MakeSection(2, 1, 1)
+    MakeSection(3, -1, -1)
+    MakeSection(4, 1, -1)
+    return TableOfPos :: { [number]: {Vector3} }
+end
+
+
+return Map_Manager
 --[[ Pre Startup (basically whats already in explorer before play)
 Map: Folder
 Map: {
