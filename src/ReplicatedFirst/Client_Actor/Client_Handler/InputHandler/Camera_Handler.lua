@@ -24,7 +24,11 @@ local function SetCameraMode()
 	camera.FieldOfView = 60
 	camera.CameraSubject = nil
 end
-
+--[[ Camera rotation to make mouse movement consitent
+clockwise 90 =  CFrame.Angles(cameraRotation.X, 0, 0) * CFrame.Angles(0, -cameraRotation.Y, math.rad(-90)) 
+anti clockwise 90 = CFrame.Angles(-cameraRotation.X, 0, 0) * CFrame.Angles(0, cameraRotation.Y, math.rad(90))
+upside down = CFrame.Angles(0, -cameraRotation.X, 0) * CFrame.Angles(cameraRotation.Y, 0, math.rad(180)) 
+]]
 local function UpdateCamera()
 	SetCameraMode()
 	local cameraRotationCFrame = CFrame.Angles(0, cameraRotation.X, 0) * CFrame.Angles(cameraRotation.Y, 0, 0)
@@ -111,6 +115,12 @@ end
 type Character  = { Torso: BasePart, PrimaryPart: BasePart, Body: BasePart,}
 function CameraHandler:Start(Character: Character?)
 	local Conn: {RBXScriptConnection} = {}
+	if Character then 
+		torso = Character.Torso 
+		playerPosition = torso.Position
+		default_CameraPosition = playerPosition
+		cameraPosition = playerPosition
+	end
 	if UserInputService.TouchEnabled then
 		-- The user is on a mobile device, use Touch events
 		UserInputService.TouchPan:Connect(TouchMove)
@@ -127,11 +137,7 @@ function CameraHandler:Start(Character: Character?)
 			PlayerChanged()
 		end)) 
 	end	
-	if Character then torso = Character.Torso 
-	playerPosition = torso.Position
-	default_CameraPosition = playerPosition
-	cameraPosition = playerPosition
-	end	
+	
 	return Conn :: {RBXScriptConnection}
 end
 

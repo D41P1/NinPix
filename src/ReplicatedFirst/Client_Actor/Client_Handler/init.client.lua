@@ -1,35 +1,36 @@
--- local CharacterActors = workspace:WaitForChild("WorkSpaceFolder").CharacterActors
--- local player: Player = game.Players.LocalPlayer
--- local ServerActor: Actor = CharacterActors:WaitForChild(player.Name)
-
+task.wait(2)
+local CharacterActors = workspace:WaitForChild("WorkSpaceFolder").CharacterActors
+local player: Player = game.Players.LocalPlayer
+local ServerActor: Actor = CharacterActors:WaitForChild(player.Name)
+local Children = ServerActor:GetChildren()
+local CharacterEvents = Children[2]
 -- local ClientActor:  Actor = script.Parent -- might use for other stuff later
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
--- local Shared = ReplicatedStorage:WaitForChild("Shared")
--- local WS = require(Shared.Workspace); local WorkS: WS.workspace = workspace 
--- local RP = require(Shared.ReplicatedStorage); local RepStorage: RP.ReplicatedStorage = ReplicatedStorage
--- local Task = require(ReplicatedStorage.Shared.CustomTask)
+local Shared = ReplicatedStorage.Shared
 
+local EventHandler = require(script.Parent.Event_Handler)
+local T = {}; for _, Event in CharacterEvents:GetChildren() do T[Event.Name] = Event  end
+EventHandler["Events"] = T
+
+local SharedType = require(Shared.SharedType)
+local AnimHandler = require(Shared.AnimHandler)   
 local InputHandler = require(script.InputHandler)
--- local Map_Manager = require(Shared.Map_Manager)
 local CharacterHandler = require(script.Character_Handler)
 
-local Character = CharacterHandler:Spawn()
-CharacterHandler:Init()
+CharacterHandler["ServerActor"] = ServerActor
+InputHandler["ServerActor"] = ServerActor
+AnimHandler:InitAnimTypes("Humanoid")
+CharacterHandler.Init()
 
+local Character,  CustomHumanoid: SharedType.CustomHumanoid= CharacterHandler.Spawn(player)
+InputHandler["Character"] = Character
+
+InputHandler:Init(CustomHumanoid)
 InputHandler:GiveConnections(Character)
+CustomHumanoid.Idle:Play()
+
+
 
 --////////////////////////////////////////////// REMOVE LATER /////////////////////////////////////////////
 --////////////////////////////////////////////////////////////
-
-
-
-
---[[ TODO
---//// Init phase
-Connect to the Data Event 
-BindMessage Actor 
-Start Init input handler
---/// Inputs
-Client inputs pseudo code
-]]
 

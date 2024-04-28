@@ -9,7 +9,7 @@ export type Properties = { Width: number, Height: number, Range: number }
 local RayParams = RaycastParams.new()
 local OverParams = OverlapParams.new()
 
-function HB:BoxBounds(Character:Model, Origin:CFrame, Properties: Properties)
+function HB:BoxBounds(Character:Model, Origin:CFrame, Properties: Properties) task.synchronize()
 	OverParams.FilterType = Enum.RaycastFilterType.Include
 	OverParams.FilterDescendantsInstances = {workspace.Bodies} -- make it only bodies TODO
 
@@ -20,16 +20,14 @@ function HB:BoxBounds(Character:Model, Origin:CFrame, Properties: Properties)
 	if Results then return Results end		
     return	
 end
-function HB:Raycasting(Origin:Vector3,  End:Vector3,   Distance,  Filter)
+function HB:Raycasting(Origin:Vector3,  End:Vector3,   Distance,  Filter) task.synchronize()	
 	RayParams.FilterDescendantsInstances  = Filter
 	RayParams.FilterType = Enum.RaycastFilterType.Include
-    task.desynchronize()
-	local Dir = (End - Origin).Unit
-	
-	task.synchronize()
+	task.desynchronize()
+	local Dir = (End - Origin).Unit	
 	return workspace:Raycast(Origin,Dir* Distance,RayParams)
 end
-function HB:InFrontBlockCasting(Character:Model, Origin:CFrame, Properties: Properties, Filter)	
+function HB:InFrontBlockCasting(Character:Model, Origin:CFrame, Properties: Properties, Filter) task.synchronize()		
 	RayParams.FilterDescendantsInstances  = Filter
 	RayParams.FilterType = Enum.RaycastFilterType.Include
     task.desynchronize()

@@ -20,45 +20,71 @@ its still just as accurate as the default task.delay
 -- anim asset rbxassetid://16738583705
 local AnimBox: Part
 AnimBox = workspace.CurrentCamera:FindFirstChild("Task")
-if not AnimBox then AnimBox = Instance.new("Part") end
-AnimBox.Name = "Task"
-AnimBox.Transparency = 1
-AnimBox.Anchored = true
-
 local OneFrameAnim = script["1F"] 
-local Motor = Instance.new("Motor6D")
-local AnimationController = Instance.new("AnimationController")
-local Animator = Instance.new("Animator")
+local Motor
+local AnimationController
+local Animator
 
-AnimBox.Parent = workspace.Camera
-AnimBox.Anchored =true
-Motor.Parent = AnimBox
-Motor.Part1 = AnimBox
-Motor.Part0 = AnimBox
-AnimationController.Parent = AnimBox
-Animator.Parent = AnimationController
+if not AnimBox then
+	AnimBox = Instance.new("Part")
+	Motor = Instance.new("Motor6D")
+	AnimationController = Instance.new("AnimationController")
+	Animator = Instance.new("Animator")
 
+	Motor.Part1 = AnimBox
+	Motor.Part0 = AnimBox	
+	Motor.Parent = AnimBox
+	AnimationController.Parent = AnimBox
+	Animator.Parent = AnimationController
+end
+if  AnimBox then 
+	AnimBox.Name = "Task"
+	AnimBox.Transparency = 1
+	AnimBox.Anchored = true	
+	AnimBox.Parent = workspace.CurrentCamera
+end
+
+AnimationController = AnimBox:FindFirstChild("AnimationController")
+if AnimationController then
+	Animator = AnimationController.Animator
+end
 
 local Task = {}
 local SimulateDelay = Animator:LoadAnimation(OneFrameAnim)	
 
 function Task.Delay(DelayTime: number, Function: (... any) -> any, ...: any)
 	local Args = {...}
+	local Delay = DelayTime or 1 
 	local SimulateDelay = Animator:LoadAnimation(OneFrameAnim)	
 	SimulateDelay:Play()
-	SimulateDelay:AdjustSpeed(1/DelayTime)
-	Task[SimulateDelay] =  SimulateDelay.KeyframeReached:Connect(function(keyframeName: string)  Function(unpack(Args)) end)
+	SimulateDelay:AdjustSpeed(1/Delay)
+	Task[SimulateDelay] =  SimulateDelay.KeyframeReached:Connect(function(keyframeName: string)  
+		Function(unpack(Args))
+		SimulateDelay:Stop()
+		SimulateDelay:Destroy()
+		Task[SimulateDelay] = nil
+	end)
+	return SimulateDelay :: AnimationTrack
 end
 function Task.DelayParallel(DelayTime: number, Function: (... any) -> any, ...: any)
 	local Args = {...}
+	task.synchronize()
 	local SimulateDelay = Animator:LoadAnimation(OneFrameAnim)	
 	SimulateDelay:Play()
 	SimulateDelay:AdjustSpeed(1/DelayTime)
-	Task[SimulateDelay] =  SimulateDelay.KeyframeReached:ConnectParallel(function(keyframeName: string)  Function(unpack(Args)) end)
+	Task[SimulateDelay] =  SimulateDelay.KeyframeReached:ConnectParallel(function(keyframeName: string)
+		Function(unpack(Args))
+		task.synchronize()
+		SimulateDelay:Stop()
+		SimulateDelay:Destroy()
+		Task[SimulateDelay] = nil
+	end)
+	return SimulateDelay :: AnimationTrack
 end
 function Task.Cancel(Thread: AnimationTrack)
 	local ValidThread: RBXScriptConnection? = Task[Thread]
-	if not ValidThread then return	 end
+	if not ValidThread then return end
+	task.synchronize()
 	Thread:Stop() 
 	Thread:Destroy()
 	ValidThread:Disconnect()
@@ -67,7 +93,9 @@ end
 
 -- this is purely to load the anim cos apparently the first use of the anim is laggy
 SimulateDelay:Play()
-SimulateDelay:AdjustSpeed(150)
+SimulateDelay:AdjustSpeed(9999)
+task.wait()
+SimulateDelay:Destroy()
 
 return Task
 

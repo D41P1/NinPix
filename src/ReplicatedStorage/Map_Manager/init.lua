@@ -1,5 +1,4 @@
 local CentrePosChecks = require(script.CentrePosCheck)
-
 local Maps = {}
 local HashMapSize = {
     NetworkHashMap =  512,
@@ -10,9 +9,7 @@ local Map_Manager = {}
 Map_Manager.GetClosestSection = CentrePosChecks.GetClosestSection
 Map_Manager.NetworkPartitionCentrePosCheck = CentrePosChecks.NetworkPartitionCentrePosCheck
 Map_Manager.RenderPartitionCentrePosCheck = CentrePosChecks.RenderPartitionCentrePosCheck
-
 export type Map = {Vector3}
-
 function Map_Manager:GetMapType(TypeOfMap: string, Size: number?)
     local Map = Maps[TypeOfMap]
     local SectionSize =  Size or 2048
@@ -38,32 +35,36 @@ function GetSection(HashMap: Map)
     return SectionsTable
 end
 function CreatePartitions(Size: number, SectionSize: number)
-    local TableOfPos = {
-        [1] = {},
-        [2] = {},
-        [3] = {},
-        [4] = {},
-    }
+    local TableOfPos = {}
     local NumberOfPartitions = 0
-    local function MakeSection(SectionNumber: number, AxisFlipX: number, AxisFlipZ: number)
-        for Ydown = SectionSize, Size, -Size do
-            local OffsetZ = AxisFlipZ*(Ydown + -Size/2) 
-            for XAcross = SectionSize, Size/2, -Size do
-                NumberOfPartitions += 1
-                local CentrePoint = Vector3.new( AxisFlipX*(XAcross + -Size/2), 0, OffsetZ)
-                TableOfPos[SectionNumber][NumberOfPartitions] = CentrePoint
+    local function MakeSection(AxisFlipX: number, AxisFlipZ: number, boolean: boolean)
+        if boolean then
+            for Ydown = SectionSize, -SectionSize + Size/2, -Size do
+                local OffsetZ = AxisFlipZ*(Ydown + -Size/2) 
+                for XAcross = SectionSize, -SectionSize + Size/2, -Size do
+                    NumberOfPartitions += 1
+                    local CentrePoint = Vector3.new( AxisFlipX*(XAcross + -Size/2), 0, OffsetZ)
+                    TableOfPos[NumberOfPartitions] = CentrePoint
+                end
+            end
+        else
+            for Ydown = Size, SectionSize, Size do
+                local OffsetZ = AxisFlipZ*(Ydown + -Size/2) 
+                for XAcross = SectionSize, Size/2, -Size do
+                    NumberOfPartitions += 1
+                    local CentrePoint = Vector3.new( AxisFlipX*(XAcross + -Size/2), 0, OffsetZ)
+                    TableOfPos[NumberOfPartitions] = CentrePoint
+                end
             end
         end
-        NumberOfPartitions = 0
     end
-    MakeSection(1, -1, 1)
-    MakeSection(2, 1, 1)
-    MakeSection(3, -1, -1)
-    MakeSection(4, 1, -1)
+    MakeSection(-1, 1, true)
     return TableOfPos :: { [number]: {Vector3} }
 end
 
-
+local CLosestNetPartition: number  
+function Map_Manager.SetClosestNetPartition(PartitionNumber: number) CLosestNetPartition = PartitionNumber  end
+function Map_Manager.GiveClosestNetPartition() return CLosestNetPartition end
 return Map_Manager
 --[[ Pre Startup (basically whats already in explorer before play)
 Map: Folder
@@ -80,7 +81,6 @@ Map: {
 --[[InFo
 we using a HexaDecatree (8) which should leave each partition as 250x250 
 Map is 4096x4096
-A Section is 2048x2048
 A Hexdeca partition is 256x256
 64 partitions total per section
 4 partitions rendered at all times simulating 500 stud radius rendering

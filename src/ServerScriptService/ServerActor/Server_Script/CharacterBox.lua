@@ -1,0 +1,2 @@
+local CharacterBox = {}
+return CharacterBox

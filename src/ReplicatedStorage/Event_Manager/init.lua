@@ -1,3 +1,4 @@
+--!native
 --[[ Info
 Module used for firing events between client and player
 ]]
@@ -21,5 +22,29 @@ so instead  the actual event will be the first argument
 --[[ FireToServer(Event , ...)  ]]
 --[[ FireToNetworkPartition(Event , Section, Partition, ...)  ]]
 --[[ FireToAllClients(Event , ...)  ]]
-
-return nil
+local Event_Manager = {}
+local BufferConverter = require(script.Buffer_Converter)
+function Event_Manager:FireToServer(Event: RemoteEvent , ...)  
+  local Buff: buffer = BufferConverter:ConvertArray({...})
+  Event:FireServer(Buff)
+end
+function Event_Manager:FireToClient(player: Player ,Event: RemoteEvent , ...)  
+  local Buff: buffer = BufferConverter:ConvertArray({...})
+  task.synchronize()
+  Event:FireClient(player, Buff)
+end
+function Event_Manager:FireToAllClients(Event: RemoteEvent , ...)  
+  local Buff: buffer = BufferConverter:ConvertArray({...})
+  task.synchronize()
+  Event:FireAllClients(Buff)
+end
+function Event_Manager:FireToNetPart(Event: RemoteEvent , NetPartHashMap: {[string]: Player},  ...)  
+  local Buff: buffer = BufferConverter:ConvertArray({...})
+  task.synchronize()
+  local Fire: (RemoteEvent, Player, ...any) -> () = Event.FireClient
+  for _, player in NetPartHashMap do 
+    Fire(Event, player, Buff)
+  end
+end
+function Event_Manager.Read(TableOfReferences: {any}, buff: buffer)   return BufferConverter.Read(TableOfReferences, buff) end
+return Event_Manager

@@ -5,8 +5,8 @@ Controls Respawning for Server
 local SSS = game:GetService("ServerScriptService")
 -- local Shared = game:GetService("ReplicatedStorage").Shared
 -- local WS = require(Shared.Workspace); local WorkS: WS.workspace = workspace 
-local ServerMainScript = SSS.Server.ServerActor.Server
-local StarterCharacterScripts = ServerMainScript.StarterCharacterScripts
+local ServerMainScript = SSS.Server.ServerActor.Server_Script
+local CharacterActor = ServerMainScript.CharacterActor
 local Spawning = require(ServerMainScript.Character_Controller.Spawning)
 local CharacterActors = workspace.WorkSpaceFolder.CharacterActors
 
@@ -18,8 +18,7 @@ function Server_Respawn:Respawn(player: Player) task.synchronize()
         return
     end
     OldScript:Destroy()
-    print("destroyed")
-    local CharacterScript: Script = StarterCharacterScripts.Character_Script:Clone()
+    local CharacterScript: Script = CharacterActor.Character_Script:Clone()
     CharacterScript:SetAttribute("PlayerName", player.Name)
     CharacterScript.Enabled = true  
     CharacterScript.Parent = CharacterActors 
