@@ -44,7 +44,7 @@ end
 function HumanoidMachine.TriggerAction(Character: Model, Event: RemoteEvent?,  Action: string, ...)
     local Humanoid: StateMachine = HumanoidMachine[Character.Name]
     local HumanoidStates = Humanoid.StateMachine
-    if not HumanoidStates[Humanoid.CurrentState][Action] then return end    
+    if not HumanoidStates[Humanoid.CurrentState][Action] then  return end    
     HumanoidStates[Humanoid.CurrentState][Action](HumanoidMachine, Character, Event, ...)
 end
 function  HumanoidMachine.ChangeState(PlayerName: string, NewState: string, OldState: string?)

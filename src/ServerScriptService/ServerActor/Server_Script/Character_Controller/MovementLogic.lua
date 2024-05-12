@@ -31,7 +31,7 @@ function MovementLogic.Init(Character_Controller: CharController)
     CharController = Character_Controller
 end
 local NetMap = Map_Manager:GetMapType("NetworkHashMap")
-local Count = 0
+-- local Count = 0
 function MovementLogic.Walk(player: Player, DirectionBuffer: buffer)
     if typeof(DirectionBuffer) ~= "buffer" then task.synchronize(); player:Kick("Spoof Buffer move"); return end
     if buffer.len(DirectionBuffer) > 64 then  task.synchronize(); player:Kick("Spoof buffer move".. buffer.len(DirectionBuffer) ); return end
@@ -40,19 +40,15 @@ function MovementLogic.Walk(player: Player, DirectionBuffer: buffer)
     local References = {"number", "Vector3"}
     local NetPartition: number , Direction: Vector3 =  Eventmanager.Read(References, DirectionBuffer)
     local Character = CharController.GiveCharacter(UID)
-    local CurrentPos
-    
+    local CurrentPos =  Character.PrimaryPart.Position 
     NetPartition = math.abs(NetPartition)
-    Count += 1
-    if Count == 8 then Count = 0; CurrentPos = Character.PrimaryPart.Position end
-    MessageAPI.SendToSSS("Network", player.Name, NetPartition, "M", DirectionBuffer, UID, CurrentPos)
-    
+    -- MessageAPI.SendToSSS("Network", player.Name, NetPartition, "M", DirectionBuffer, UID, CurrentPos)
     -- anti cheat
     if math.round(NetPartition) ~= NetPartition then task.synchronize(); player:Kick("Spoof NetPart Move: ".. NetPartition); return end
     if NetPartition > 64 then task.synchronize(); player:Kick("Spoof NetPart move"); return end 
     -- anti cheat
     local Pos:Vector3 =  NetMap[NetPartition]
-    if (Pos - Character.Body.Position).Magnitude > 256.1 then task.synchronize(); player:Kick("Spoof Netpart move"); return end 
+    if (Pos - CurrentPos).Magnitude > 270 then task.synchronize(); player:Kick("Spoof Netpart move"); return end 
     HumanoidMachine.TriggerAction(Character, nil, "StartWalk", Direction)
 end
 function MovementLogic.StopWalk(player: Player, NetPartBuffer: buffer)
@@ -61,20 +57,17 @@ function MovementLogic.StopWalk(player: Player, NetPartBuffer: buffer)
     
     local References = {"number", "Vector3"}
     local NetPartition: number  =  Eventmanager.Read(References, NetPartBuffer)
-    NetPartition = math.abs(NetPartition)
     local UID = player:GetAttribute("UID") -- fire to all clients
     local Character = CharController.GiveCharacter(UID)
-    local CurrentPos
-    if Count == 8 then Count = 0; CurrentPos = Character.PrimaryPart.Position end
-    MessageAPI.SendToSSS("Network", player.Name, NetPartition,   "S",  UID, CurrentPos)
-    
+    local CurrentPos= Character.PrimaryPart.Position
+    NetPartition = math.abs(NetPartition)
+    MessageAPI.SendToSSS("Network", player.Name, NetPartition,   "S",  UID, CurrentPos)    
     -- anti cheat
     if math.round(NetPartition) ~= NetPartition then task.synchronize(); player:Kick("Spoof NetPart Move"); return end
     if NetPartition > 64 then task.synchronize(); player:Kick("Spoof NetPart move"); return end 
     -- anti cheat
-    
     local Pos:Vector3 =  NetMap[NetPartition]
-    if (Pos - Character.Body.Position).Magnitude > 256.1 then task.synchronize(); player:Kick("Spoof Netpart move"); return end 
+    if (Pos - CurrentPos).Magnitude > 270 then task.synchronize(); player:Kick("Spoof Netpart move"); return end 
     HumanoidMachine.TriggerAction(Character, nil, "StopWalk")
 end
 function MovementLogic.Jump(player: Player, DirectionBuffer: buffer)
@@ -84,8 +77,10 @@ function MovementLogic.Jump(player: Player, DirectionBuffer: buffer)
     local UID = player:GetAttribute("UID") 
     local Character = CharController.GiveCharacter(UID)
     local CurrentPos
-    Count += 1
-    if Count == 8 then Count = 0; CurrentPos = Character.PrimaryPart.Position end
+    -- Count += 1
+    -- if Count == 8 then Count = 0; 
+    CurrentPos = Character.PrimaryPart.Position 
+    -- end
     MessageAPI.SendToSSS("Network", player.Name, nil,   "J", DirectionBuffer, UID, CurrentPos)    
 
     local References = {"Vector3"}

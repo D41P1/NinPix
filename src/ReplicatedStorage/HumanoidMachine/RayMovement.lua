@@ -1,7 +1,7 @@
 --!native
 local TweenService = game:GetService("TweenService")
 local Shared = script.Parent.Parent
-local CustomTask = require(script.Parent.Parent.CustomTask)
+-- local CustomTask = require(script.Parent.Parent.CustomTask)
 local HitBox = require(Shared.Hitbox) 
 
 local SharedTypes  = require(Shared.SharedType) 
@@ -24,8 +24,8 @@ function RayMovement:RayWalk(Character, Direction: Vector3, CustomHumanoid: Cust
     local CharacterPos = Body.Position
     local TI = TweenInfo.new(0.53, Enum.EasingStyle.Linear, Enum.EasingDirection.In, 0,false)
     local NewDirCF  =  CharacterCF * CFrame.Angles(0, -math.rad(Body.Orientation.Y), 0) * RelativeDirCF
-    local FirstRayEndPoint = NewDirCF --* CFrame.new(0, 1.5, 0) -- hit a wall
     
+    local FirstRayEndPoint = NewDirCF --* CFrame.new(0, 1.5, 0) -- hit a wall
     local SecondRayStartPoint: CFrame
     local SecondRayEndPoint: CFrame 
     local SecondRay: RaycastResult?
@@ -42,10 +42,9 @@ function RayMovement:RayWalk(Character, Direction: Vector3, CustomHumanoid: Cust
             local DIRLook = DirCF * CFrame.new(0,0, -2_000_000_000)
             local FinalCF =  CFrame.lookAt(SecondRayEndPoint.Position, DIRLook.Position)   * CFrame.new(0, 0, 1)
             CustomHumanoid.MoveTracker = Tween(Body, TI,  {CFrame = FinalCF})    
-            return 0.53
+            return SecondRayEndPoint.Position
         end
     end
-    SecondRayEndPoint = CFrame.new(CharacterCF.X, CharacterCF.Y, CharacterCF.Z) 
     SecondRayStartPoint = CFrame.new(FirstRayEndPoint.Position)
     SecondRayEndPoint = SecondRayStartPoint * CFrame.new(0, -1, 0)
     -- ground
@@ -61,32 +60,33 @@ function RayMovement:RayWalk(Character, Direction: Vector3, CustomHumanoid: Cust
             HumanoidMachine.TriggerAction(Character, nil, "Fall")
             local P1 = Vector3.new(SecondRay.Position.X, 1.7 *CharacterPos.Y, SecondRay.Position.Z) 
             local Points = CalculateCurvePoints(CharacterPos, SecondRay.Position, NewDirCF, 3, P1)
-            Points[3] = SecondRay.Position + Vector3.new(0, Hip, 0)
+            SecondRayEndPoint = CFrame.new(SecondRay.Position + Vector3.new(0, Hip, 0))   -- TODO put in humanoid heights
+            Points[3] = SecondRayEndPoint.Position
             local CountTable: count = { TweenPoints = Points , Count = 1, Points = { ["CurrentPosition"] = CharacterPos,  ["Origin"] = CharacterPos, ["End"]=SecondRay.Position}  }
             local AccelTable = {[1] = 75, [2]= 75, [3] = 105}
-            SecondRayEndPoint = CFrame.new(SecondRay.Position)  * CFrame.new(0, Hip, 0) -- TODO put in humanoid heights
             FinalCF =  CFrame.lookAt(CharacterPos, DIRLook.Position)   
-            Body.CFrame = FinalCF
             Humanoid.Falltracker = RecursiveTween(Body, Character, CountTable, AccelTable, HumanoidMachine, NewDirCF)
             task.synchronize()
+            Body.CFrame = FinalCF
             Humanoid.Fall:Play(0.5)
-            return
+            return SecondRayEndPoint.Position
         end
         CustomHumanoid.MoveTracker = Tween(Body, TI, {CFrame = FinalCF})
-        return 0.53
+        return SecondRayEndPoint.Position
     end
     SecondRay = HitBox:Raycasting(SecondRayStartPoint.Position, SecondRayEndPoint.Position, 300, {WorkSpace.Map})
-    if not SecondRay then  return end
+    if not SecondRay then  return SecondRayEndPoint.Position end
     HumanoidMachine.TriggerAction(Character, nil, "Fall")
     local P1 = Vector3.new(SecondRay.Position.X, 1.7 *CharacterPos.Y, SecondRay.Position.Z) 
     local Points = CalculateCurvePoints(CharacterPos, SecondRay.Position, NewDirCF, 3, P1)
-    Points[3] = SecondRay.Position + Vector3.new(0, Hip, 0)
+    SecondRayEndPoint = CFrame.new(SecondRay.Position + Vector3.new(0, Hip, 0)) 
+    Points[3] = SecondRayEndPoint.Position
     local CountTable: count = { TweenPoints = Points , Count = 1, Points = { ["CurrentPosition"] = CharacterPos,  ["Origin"] = CharacterPos, ["End"]=SecondRay.Position}  }
     local AccelTable = {[1] = 75, [2]= 75, [3] = 105}
     Humanoid.Falltracker = RecursiveTween(Body, Character, CountTable, AccelTable, HumanoidMachine, NewDirCF)
     task.synchronize()
     Humanoid.Fall:Play(0.5)
-    return
+    return SecondRayEndPoint.Position
 end
 function RayMovement:Jump(Character, Direction: Vector3, HumanoidMachine)
     local Body = Character.PrimaryPart
@@ -126,25 +126,31 @@ function RayMovement:Jump(Character, Direction: Vector3, HumanoidMachine)
         end)
     end)
 end
-function RayMovement:CheckFalling(Character: Model, HumanoidMachine: Machine, Humanoid: CustomHumanoid)
+function RayMovement:CheckFalling(Character: Model, HumanoidMachine: Machine, Humanoid: CustomHumanoid, EndPos: Vector3?)
     local Body = Character.PrimaryPart
-    local groundRay = GroundFunc(Body.Position, 5, {WorkSpace.Map})
-    if not groundRay then return end
+    local Pos = EndPos or Body.Position
+    local FinalPos: Vector3
+    local groundRay = GroundFunc(Pos, 5, {WorkSpace.Map})
     local Falltracker = Humanoid.Falltracker 
-    local Hip: number = Character:GetAttribute("Hip")
-    task.synchronize()
-    Body.Position = groundRay.Position + Vector3.new(0, Hip, 0)     
-    if Falltracker then 
-        Falltracker:Pause(); Falltracker:Destroy(); Humanoid.Falltracker = nil
-        Humanoid.Fall:Stop()        
-        HumanoidMachine.TriggerAction(Character, nil, "ReleaseFall")
-        return
-    end    
+    local Hip: number = Character:GetAttribute("Hip")    
+    if groundRay then 
+        FinalPos = groundRay.Position + Vector3.new(0, Hip, 0)
+        task.synchronize()
+        Body.Position = FinalPos
+        if Falltracker then 
+            Falltracker:Pause(); Falltracker:Destroy(); Humanoid.Falltracker = nil
+            Humanoid.Fall:Stop()        
+            HumanoidMachine.TriggerAction(Character, nil, "ReleaseFall")
+        end
+        return FinalPos        
+    end
     local groundRay2 = GroundFunc(Body.Position, 7, {WorkSpace.Map})
-    if not groundRay2 then return end
+    if not groundRay2 then return FinalPos end
     -- not falling so just tp to place
+    FinalPos = groundRay2.Position + Vector3.new(0, Hip, 0) 
     task.synchronize()
-    Body.Position = groundRay2.Position + Vector3.new(0, Hip, 0)     
+    Body.Position = FinalPos
+    return FinalPos
 end
 
 --[[

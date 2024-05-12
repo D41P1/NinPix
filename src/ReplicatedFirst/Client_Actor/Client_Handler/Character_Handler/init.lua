@@ -1,5 +1,5 @@
-local PermissionsService = game:GetService("PermissionsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage.Shared
 local player: Player = game.Players.LocalPlayer
 task.wait(2)
@@ -111,16 +111,8 @@ type Profile = {
 function Character_Handler.OtherCharMove(Data)
     local UID: string = Data.UID
     local OtherProfile: Profile = OtherPlrs[UID]
-    local Avatar = OtherProfile.Avatar.PrimaryPart
-    local Pos:Vector3 = Data.CurrentPos
-    if Pos and (Pos -  Avatar.Position).Magnitude > 1  then  Avatar:PivotTo( CFrame.new(Pos) )   end   
-    if UID== MyUID then 
-        local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[UID]
-        if Humanoid.MoveTracker then Humanoid.MoveTracker:Pause(); Humanoid.MoveTracker:Destroy() end
-        HumanoidMachine.TriggerAction(Character, nil, "StartWalk", Data.Direction)
-        return 
-    end 
-    Data.Func = "TriggerAction"
+    if UID== MyUID  then   return end 
+    Data.Func = "TriggerAction"     
     Data.Action = "StartWalk"
     OtherProfile.Actor:SendMessage("Info", Data)
 end
@@ -128,9 +120,14 @@ function Character_Handler.StopMove(Data)
     local UID: string = Data.UID
     local OtherProfile: Profile = OtherPlrs[UID]
     local Avatar = OtherProfile.Avatar.PrimaryPart
-    local Pos:Vector3 = Data.CurrentPos
-    if Pos and (Pos -  Avatar.Position).Magnitude > 1  then Avatar:PivotTo( CFrame.new(Pos) )  end   
-    if UID== MyUID then  return end -- IMPORTANT
+    local Pos:Vector3 = Data.CurrentPos 
+    if (Avatar.Position - Pos).Magnitude > 1 then Avatar.Position = Pos end
+    if UID== MyUID then 
+        local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[UID]
+        if Humanoid.Falltracker then Humanoid.Falltracker:Pause(); Humanoid.Falltracker:Destroy() end
+        HumanoidMachine.TriggerAction(Character, nil, "StopWalk")        
+        return  
+    end -- IMPORTANT
     Data.Func = "TriggerAction"
     Data.Action = "StopWalk"
     OtherProfile.Actor:SendMessage("Info", Data)
@@ -147,7 +144,7 @@ function Character_Handler.Jump(Data)
     OtherProfile.Actor:SendMessage("Info", Data)
 end 
 
-function Character_Handler:CheckPlayerCentrePosNetwork()
+function Character_Handler:CheckPlayerCentrePosNetwork()    
     local ClosestNetworkPartitionNumber: number = Map_Manager.GiveClosestNetPartition() 
     if not ClosestNetworkPartitionNumber then warn("DID NOT get closestnetpartition"); return end
     -- NetworkHandler:CheckNetworkPartition(ClosestNetworkPartitionNumber)

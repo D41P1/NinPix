@@ -19,7 +19,7 @@ type Machine = SharedTypes.Machine
 --/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 local HumanoidStates = {
     ["Walk"] = {
-        StopWalk = function(HumanoidMachine: Machine, Character: Model, Event: Events)
+        StopWalk = function(HumanoidMachine: Machine, Character: Model, Event: Events, EndPos: Vector3?)
             HumanoidMachine.ChangeState(Character.Name, "Idle")
             local Humanoid: CustomHumanoid = HumanoidMachine[Character.Name]
             if not  Humanoid then return end
@@ -29,19 +29,15 @@ local HumanoidStates = {
             if Humanoid.Walk then  Humanoid.Walk:Stop(); Humanoid.IsWalking = false end
             if Event then Event_Manager:FireToServer(Event, NetworkPartition) end
             task.desynchronize()
-            RayMovement:CheckFalling(Character, HumanoidMachine, Humanoid)
+            RayMovement:CheckFalling(Character, HumanoidMachine, Humanoid, EndPos)
         end,        
-        StartWalk = function(HumanoidMachine: Machine, Character, Event: Events, Direction)task.desynchronize()
+        StartWalk = function(HumanoidMachine: Machine, Character, Event: Events, Direction: Vector3)task.desynchronize()
             local Humanoid: CustomHumanoid = HumanoidMachine[Character.Name]
             local NetworkPartition: number =  Map_Manager.GiveClosestNetPartition()
             local function playAnim() task.synchronize(); Humanoid.Walk:Play(); Humanoid.IsWalking = true end
-            -- local Direction: Vector3 = MovementHelper:GiveDirection(Character,  Key)
-            task.synchronize()
             if Event then  Event_Manager:FireToServer(Event, NetworkPartition, Direction) end
-            task.desynchronize()
             if not Humanoid.IsWalking then playAnim()  end
             RayMovement:RayWalk(Character, Direction, Humanoid, HumanoidMachine) 
-            -- Event_Manager:FireToServer(Event, false, Vector3.new(10,1010,10)) -- testing anti-cheat
         end,
         Jump = function(HumanoidMachine: Machine, Character: Model, Event: Events, Key: string)
             local Humanoid: CustomHumanoid = HumanoidMachine[Character.Name]
@@ -71,7 +67,7 @@ local HumanoidStates = {
     },
     ["Jump"] = {
         Jump = function(HumanoidMachine: Machine, Character: Model, Event: Events, Direction: Vector3)
-            if  Event then print("fired jump event"); Event_Manager:FireToServer(Event, Direction) end 
+            if  Event then Event_Manager:FireToServer(Event, Direction) end 
             RayMovement:Jump(Character, Direction, HumanoidMachine)            
         end,
         ReleaseJump = function(HumanoidMachine: Machine, Character: Model, ...) HumanoidMachine.ChangeToOldState(Character.Name)  end,
@@ -79,13 +75,12 @@ local HumanoidStates = {
     },
     ["Fall"] = {
         ReleaseFall = function(HumanoidMachine: Machine, Character: Model, ...)HumanoidMachine.ChangeToOldState(Character.Name)  end,
-        StopWalk = function(HumanoidMachine: Machine, Character: Model)
+        StopWalk = function(HumanoidMachine: Machine, Character: Model, _, EndPos: Vector3?)
             local Humanoid: CustomHumanoid = HumanoidMachine[Character.Name]
             if not  Humanoid then return end
             task.desynchronize()
-            RayMovement:CheckFalling(Character, HumanoidMachine, Humanoid)
+            RayMovement:CheckFalling(Character, HumanoidMachine, Humanoid, EndPos)
         end,
-
     }
 }
 

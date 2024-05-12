@@ -77,7 +77,6 @@ local Commands = {
             ["Direction"] = Direction,
             ["CurrentPos"] = CurrentPos
         }
-        print("Received jumping Direction: ", Direction)
         MT(Data)
     end
     -- REMOVE

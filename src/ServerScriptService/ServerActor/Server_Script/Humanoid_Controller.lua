@@ -17,9 +17,7 @@ local Humanoid_Controller = {
             HumanoidMachine.ChangeState(Character.Name, "Idle")
             local Humanoid: CustomHumanoid = HumanoidMachine[Character.Name]
             if not  Humanoid then return end
-            if Humanoid.MoveTracker then 
-                task.synchronize(); Humanoid.MoveTracker:Pause(); Humanoid.MoveTracker:Destroy(); Humanoid.MoveTracker = nil
-            end
+            if Humanoid.MoveTracker then task.synchronize(); Humanoid.MoveTracker:Pause(); Humanoid.MoveTracker:Destroy(); Humanoid.MoveTracker = nil end
             RayMovement:CheckFalling(Character, HumanoidMachine, Humanoid)
         end,        
         StartWalk = function(HumanoidMachine: Machine, Character, HOLDER, Direction: Vector3)task.desynchronize()

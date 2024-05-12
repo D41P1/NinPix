@@ -26,6 +26,7 @@ local Event_Manager = {}
 local BufferConverter = require(script.Buffer_Converter)
 function Event_Manager:FireToServer(Event: RemoteEvent , ...)  
   local Buff: buffer = BufferConverter:ConvertArray({...})
+  task.synchronize()
   Event:FireServer(Buff)
 end
 function Event_Manager:FireToClient(player: Player ,Event: RemoteEvent , ...)  
