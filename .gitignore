@@ -4,5 +4,8 @@
 # Roblox Studio lock files
 /*.rbxlx.lock
 /*.rbxl.lock
+/NinPix.rbxl.lock
 # selene
 /selene.toml
+#source map
+/sourcemap.json

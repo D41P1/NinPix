@@ -30,14 +30,13 @@ function Network_Handler.Receiver(InfoBuffer: buffer)
     local offset = 0
     local Empty = string.char(0)
     local Len = buffer.len(InfoBuffer)
-    for i = 1, Len, 20 do
+    for i = 1, Len, 25 do
         -- if offset >= Len then warn("out of bounds: ", offset, Len); return end
         local UID = ReadS(InfoBuffer, offset, 1)
         offset += 1
         local CF: CFrame = BufferConverter.PosReader(InfoBuffer, offset)
-        offset += 19
+        offset += 24
         if UID == Empty then return end
-        --TODO characterHandler ->> ForwardActor
         local Data = {
             Func = "CheckMove",
             UID = UID,

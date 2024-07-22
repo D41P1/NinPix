@@ -124,104 +124,26 @@ local Read = function(TableOfReferences: { string }, buff: buffer)
 	end
 	return unpack(ReturnValues)
 end
-local FP_EPSILON = 1e-6
-local I16_PRECISION = 32767                 -- int16 range { -32,786, 32,767 }
-local BUFF_CFRAME_SIZE = (3*4) + (1 + 3*2)  -- i.e. 3x f32, 1x u8 and 3x i16 -- 19 bytes
-
-local function getNormalisedQuaternion(cframe)
-	local axis, angle = cframe:ToAxisAngle()
-	axis = axis.Magnitude > FP_EPSILON and axis.Unit or Vector3.xAxis
-
-	local ha = angle / 2
-	local sha = math.sin(ha)
-
-	local x = sha*axis.X
-	local y = sha*axis.Y
-	local z = sha*axis.Z
-	local w = math.cos(ha)
-
-	local length = math.sqrt(x*x + y*y + z*z + w*w)
-	if length < FP_EPSILON then
-		return 0, 0, 0, 1
-	end
-
-	return x / length,	y / length, z / length,	w / length
-end
-
-
-local function compressQuaternion(cframe: CFrame)
-	local qx, qy, qz, qw = getNormalisedQuaternion(cframe)
-
-	local index = -1
-	local value = -math.huge
-
-	local sign
-	for i = 1, 4, 1 do
-		local val = select(i, qx, qy, qz, qw)
-		local abs = math.abs(val)
-		if abs > value then
-			index = i
-			value = abs
-			sign = val
-		end
-	end
-	sign = sign >= 0 and 1 or -1
-
-	local v0, v1, v2
-	if index == 1 then
-		v0 = math.floor(qy * sign * I16_PRECISION + 0.5)
-		v1 = math.floor(qz * sign * I16_PRECISION + 0.5)
-		v2 = math.floor(qw * sign * I16_PRECISION + 0.5)
-	elseif index == 2 then
-		v0 = math.floor(qx * sign * I16_PRECISION + 0.5)
-		v1 = math.floor(qz * sign * I16_PRECISION + 0.5)
-		v2 = math.floor(qw * sign * I16_PRECISION + 0.5)
-	elseif index == 3 then
-		v0 = math.floor(qx * sign * I16_PRECISION + 0.5)
-		v1 = math.floor(qy * sign * I16_PRECISION + 0.5)
-		v2 = math.floor(qw * sign * I16_PRECISION + 0.5)
-	elseif index == 4 then
-		v0 = math.floor(qx * sign * I16_PRECISION + 0.5)
-		v1 = math.floor(qy * sign * I16_PRECISION + 0.5)
-		v2 = math.floor(qz * sign * I16_PRECISION + 0.5)
-	end
-
-	return index, v0, v1, v2
-end
-local function decompressQuaternion(index, v0, v1, v2)
-	v0 /= I16_PRECISION
-	v1 /= I16_PRECISION
-	v2 /= I16_PRECISION
-
-	local d = math.sqrt(1 - (v0*v0 + v1*v1 + v2*v2))
-	if index == 1 then
-		return d, v0, v1, v2
-	elseif index == 2 then
-		return v0, d, v1, v2
-	elseif index == 3 then
-		return v0, v1, d, v2
-	end
-	return v0, v1, v2, d
-end
-local PosWriter =function(input:CFrame, b ,offset:number )
-	local buf = b or buffer.create(19) 
+local PosWriter =function(Pos: Vector3, Look:Vector3, Up:Vector3, b ,offset:number )
+	local buf = b or buffer.create(24) 
 	local Needle = offset or 0	
-	local WriteF32 =buffer.writef32 
+	local WriteF32 = buffer.writef32 
 	local Writei16 = buffer.writei16
-	local qi, q0, q1, q2 = compressQuaternion(input)
-	
-	WriteF32(buf, Needle + 0, input.X)
-	WriteF32(buf, Needle + 4, input.Y)
-	WriteF32(buf, Needle + 8, input.Z)
 
-	buffer.writeu8(buf, Needle + 12, qi)
-	Writei16(buf, Needle + 13, q0)
-	Writei16(buf, Needle + 15, q1)
-	Writei16(buf, Needle + 17, q2)
+	WriteF32(buf, Needle + 0, Pos.X)
+	WriteF32(buf, Needle + 4, Pos.Y)
+	WriteF32(buf, Needle + 8, Pos.Z)
 
-	return buf
+	Writei16(buf, Needle + 12, Look.X*10000)
+	Writei16(buf, Needle + 14, Look.Y*10000)
+	Writei16(buf, Needle + 16, Look.Z*10000)
+
+	Writei16(buf, Needle + 18, Up.X*10000)
+	Writei16(buf, Needle + 20, Up.Y*10000)
+	Writei16(buf, Needle + 22, Up.Z*10000)
+	Needle += 22
+	return buf, Needle
 end
-
 local PosReader = function(buf, offset)
 	local Needle = offset or 0
 	local ReadF32 = buffer.readf32 
@@ -230,14 +152,26 @@ local PosReader = function(buf, offset)
 	local x = ReadF32(buf, Needle + 0)
 	local y = ReadF32(buf, Needle + 4)
 	local z = ReadF32(buf, Needle + 8)
+	local Pos = Vector3.new(x,y,z)
+	
+	local T = {}
+	Needle += 12
+	for i = 1, 6 do 
+		local n = Readi16(buf, Needle)
+		Needle += 2
+		table.insert(T, n)--* n is multiplied by 10,000 so .Unit will make it back to mag of 1
+	end
+	--//local Lx = Readi16(buf, Needle + 13)
+	--//local Ly = Readi16(buf, Needle + 15)
+	--//local Lz = Readi16(buf, Needle + 17)
+	local Look = Vector3.new(T[1], T[2], T[3]).Unit
+	local Up = Vector3.new(T[4], T[5], T[6]).Unit
+	local CF = CFrame.lookAlong(Pos, Look, Up)
+	--// local Ux = Readi16(buf, Needle + 13)
+	--// local Uy = Readi16(buf, Needle + 15)
+	--// local Uz = Readi16(buf, Needle + 17)
 
-	local qi = buffer.readu8(buf, Needle + 12)
-	local q0 = Readi16(buf, Needle + 13)
-	local q1 = Readi16(buf, Needle + 15)
-	local q2 = Readi16(buf, Needle + 17)
-
-	local qx, qy, qz, qw = decompressQuaternion(qi, q0, q1, q2)
-	return CFrame.new(x, y, z, qx, qy, qz, qw),	BUFF_CFRAME_SIZE
+	return CF
 end
 
 BufferConverter.PosWriter = PosWriter

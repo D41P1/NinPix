@@ -26,21 +26,32 @@ Humanoid_Manager
     return Character_Controller
 ]]
 local MovementLogic = require(script.MovementLogic)
+local CombatLogic = require(script.CombatLogic)
 local CollectionService = game:GetService("CollectionService")
 local Replicatedstorage = game:GetService("ReplicatedStorage")
 local RateLimiter = require(Replicatedstorage.Shared.RateLimiter)
+
 local Character_Controller = {
 -- ["Actor"]
 }
 
 type TableOfEvents = { string }    
-local Connections: { [string]: (Player, buffer) -> nil? } = {
+local Connections: { [string]: (Player, buffer, ...any) -> nil? } = {
     ["Walk"] = MovementLogic.Walk,
     ["StopWalk"] = MovementLogic.StopWalk,
-    ["Jump"] = MovementLogic.Jump
+    ["Jump"] = MovementLogic.Jump,
+    ["M1"]= CombatLogic.M1,
+    ["M2"]= CombatLogic.M2,
+    ["Block"]= CombatLogic.Block,
+    ["StopBlock"] = CombatLogic.StopBlock,
+    ["Skill"]= CombatLogic.Skill,
+    ["Tool"]= CombatLogic.Tool,
+    ["Run"]= CombatLogic.Run,
+    ["StopRun"]= CombatLogic.StopRun,
+    ["Detect"] = CombatLogic.ApplyDamage
 }
-function Character_Controller:InitEvents(PlayerName)
-    local Events = { "Walk", "Jump","StopWalk" }
+function Character_Controller:InitEvents(PlayerName, CharacterActor)
+    local Events = { "Walk", "Jump","StopWalk","M1","M2","Block", "StopBlock", "Skill", "Tool", "Run", "StopRun", "Detect"}
     local CharacterEvents = Instance.new("Folder")
     CharacterEvents.Name = "CharacterEvents"
     CharacterEvents.Parent =  Character_Controller["Actor"]
@@ -52,5 +63,6 @@ function Character_Controller:InitEvents(PlayerName)
     end
     RateLimiter.InitProfile(PlayerName)
 end
+function Character_Controller.SendtoQ(CurrentItem:string) CombatLogic.AddtoQ(CurrentItem) end
 function Character_Controller.GiveCharacter(UID: string) return CollectionService:GetTagged(UID)[1] end
 return Character_Controller

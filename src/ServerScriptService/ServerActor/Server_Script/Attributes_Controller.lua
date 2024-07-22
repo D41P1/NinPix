@@ -10,8 +10,12 @@ local Attributes_Controller = {
     ["Humanoid"] = {
         BodyType = "Humanoid",
         Hip = 2.7
-    }
+    },
 }
+Attributes_Controller["Dummy"] = Attributes_Controller.Humanoid
+Attributes_Controller["HitDummy"] = Attributes_Controller.Humanoid
+
+
 local function AttributeConnections(player: Player)
     local UID = player:GetAttribute("UID")
     CleanupManager:Insert(UID, player:GetAttributeChangedSignal("Health"):ConnectParallel(function()  
@@ -29,9 +33,20 @@ function Attributes_Controller:InitAttributes(player: Player?, Data, UID: string
     player:SetAttribute("Health", 100)
     player:SetAttribute("NetworkPartition", NetworkPartition) -- 1-64
     player:SetAttribute("UID", UID)
-    player:SetAttribute("WalkSpeed", 14)
+    player:SetAttribute("WalkSpeed", Data.WalkSpeed)
+    player:SetAttribute("BaseWalkSpeed", Data.WalkSpeed)
+    player:SetAttribute("WallRun", true)
     if Connect then AttributeConnections(player) end 
     return UID
+end
+type HipTable  = {
+    BodyType: string,
+    Hip:number
+}
+function Attributes_Controller.GiveHip(BodyType:string)
+    local T:HipTable = Attributes_Controller[BodyType]
+    if not  T then warn("Invalid BodyType: ", BodyType, "\n: ", Attributes_Controller); return end
+    return T.Hip
 end
 function Attributes_Controller:CharacterAttributes(Character: Model, BodyType: string)
     for AttributeName, AttributeValue in Attributes_Controller[BodyType] do Character:SetAttribute(AttributeName, AttributeValue) end

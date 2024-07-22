@@ -1,8 +1,6 @@
 --!native
-local ActivityHistoryService = game:GetService("ActivityHistoryService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
-local DebuggablePluginWatcher = game:GetService("DebuggablePluginWatcher")
 -- local Debris = game:GetService("Debris")
 
 local Shared = ReplicatedStorage.Shared
@@ -16,63 +14,94 @@ local RayMovement = require(Shared.RayMovement)
 local Character: Model
 
 
+--[[
 
 local RayForward= function(Pos: Vector3, PreviousPos:Vector3, NewDir: Vector3, WS: number, Body, DeltaMove: number)
-    local NewPos = Body.Position + NewDir * (WS *DeltaMove)
-    local CFLook = CFrame.new(NewPos, Pos)
-    local Origin = Body.Position; local End = Origin + (NewDir * 2)
+    local Origin = Body.Position;
+    local End = Origin + (NewDir * 2)
     local RR = HitBox:Raycasting(Origin, End, WS*DeltaMove*3)
+    -- local CFLook
     if RR then 
-        local LookPos = Pos + NewDir*10 
-        local Look = CFrame.new(RR.Position, LookPos) 
-        CFLook = Look * CFrame.new(0, 0, 1.5)
-        -- ClientMessageAPI.SendToClientActor("ForwardHit", CFLook) 
+        -- local LookPos = Pos + NewDir*10 
+        -- local Look = CFrame.new(RR.Position, LookPos) 
+        -- CFLook = Look * CFrame.new(0, 0, 2)
+        -- -- ClientMessageAPI.SendToClientActor("ForwardHit", CFLook) 
         -- ClientActor:SendMessage("ForwardHit", CFLook) 
+        return RR.Position
     end
-    return CFLook
+    return
 end
 
+]]
+
+--[[failed wallrunning --place it into StartForwards
+local IsWallRun = Character:GetAttribute("IsWallRun")
+
+if IsWallRun then
+--TODO
+--! does not work on the Z axis walls  
+-- local EndCF = 
+-- local EndCF = CFrame.lookAlong(NewPos, CF.LookVector, CF.UpVector) * -CF.UpVector*10
+local End = CF.Position + (CF.UpVector *-10)
+local RR: RaycastResult =  HitBox:Raycasting(NewPos, End, Hip +0.1)
+if not RR then return end
+print(RR.Instance)
+end
+
+]]
+
+local Connections = {}
 Actor:BindToMessageParallel("Init", function(UID: string)  
     Character = CollectionService:GetTagged(UID)[1]
     local Hip = Character:GetAttribute("Hip")
-    local WS = Character:GetAttribute("WalkSpeed")
+    local WS = Character:GetAttribute("BaseWalkSpeed")
+    local OldWalkSpeed = WS
     local Body = Character.PrimaryPart
-    Actor:BindToMessageParallel("StartForward", function(Pos:Vector3) -- client
-        local Sync = task.synchronize
+    local LockMovement = false
+    local SF:any = Actor:BindToMessageParallel("StartForward", function(CF:CFrame) -- client    
+        if LockMovement then return end
+        local Pos= CF.Position
         local PreviousPos = Body.Position
-        local NewDir = (Pos - PreviousPos).Unit 
-        local CFLook = RayForward(Pos, PreviousPos, NewDir, WS, Body, 0.08)
-        -- Direction = NewDir 
-        Sync()
-        Body.CFrame = CFLook    
+        local NewPos = Pos + CF.LookVector *WS *0.08
+        local sy = task.synchronize
+        local RR = HitBox:Raycasting(PreviousPos, PreviousPos + CF.LookVector, WS*0.08)
+        local CFLook:CFrame
+        CFLook = CFrame.lookAlong(NewPos, CF.LookVector, CF.UpVector)
+        if RR then 
+            CFLook = CFrame.lookAlong(RR.Position, CF.LookVector, CF.UpVector)* CFrame.new(0, 0, 2)
+            sy();
+            Body.CFrame = CFLook;
+            return 
+        end
+        sy()
+        Body.CFrame = CFLook
     end)
     local PreviousCF: CFrame
-    Actor:BindToMessageParallel("StartForwardRun", function(CF:CFrame) -- for other characters 
+    local SFR:any = Actor:BindToMessageParallel("StartForwardRun", function(CF:CFrame) -- for other characters 
         if PreviousCF and (PreviousCF.Position - CF.Position).Magnitude < 0.01 then
-            print("probably the same")
             ClientActor:SendMessage("StopWalk", UID)
         end
         task.synchronize()
         Body.CFrame = CF
         PreviousCF = CF
     end)
-    -- /////////////////////////////////TODO in the downwards ray if RR then send to Client to ForceState Fall/////////////////////
-    Actor:BindToMessageParallel("StartDownward", function(CF: CFrame)  
+    local SD:any = Actor:BindToMessageParallel("StartDownward", function(CF: CFrame)
         local Origin: Vector3 = Body.Position
-        local End: Vector3 = Origin + Vector3.new(0, -1 , 0)
+        local EndCF  = Body.CFrame * CFrame.new(0, -1, 0)
+        local End: Vector3 = EndCF.Position        
         local RR: RaycastResult =  HitBox:Raycasting(Origin, End, 2.75)
-        if RR  then
+        if RR then
             local RRHitHip = RR.Position.Y + Hip
             local BodyY = Origin.Y + 0.1
             if RRHitHip > BodyY then 
-                ClientActor:SendMessage("LedgeUp", UID, RR.Position, Hip) --move up here 
+                ClientActor:SendMessage("LedgeUp", UID, RR.Position, Hip, CF) --move up here 
             end
             return 
         end
         --start fall
-        ClientActor:SendMessage("DownNoHit", UID)        
+        ClientActor:SendMessage("DownNoHit", UID)
     end)
-    Actor:BindToMessageParallel("StartFall", function()  
+    local SFa:any = Actor:BindToMessageParallel("StartFall", function()  
         local d: number, s: number = 0, 0.1
         local Conn:RBXScriptConnection
         local sy: () -> () = task.synchronize
@@ -87,7 +116,7 @@ Actor:BindToMessageParallel("Init", function(UID: string)
                 if not RR then   
                     d = deltanew
                     sy()
-                    Body.Position  = Origin + Vector3.new(0, -1.5, 0)
+                    Body.Position  = Origin + Vector3.new(0, -2, 0)
                     return   
                 end
                 ClientActor:SendMessage("StopFall", UID)     
@@ -98,8 +127,9 @@ Actor:BindToMessageParallel("Init", function(UID: string)
             d = deltanew 
         end)    
     end)
-    Actor:BindToMessageParallel("JumpWithMovement", function(Direction: Vector3) -- for other characters 
+    local JWM:any = Actor:BindToMessageParallel("JumpWithMovement", function(RelativeDirCF: CFrame) -- for other characters 
         local Start = Body.Position 
+        local Direction = RelativeDirCF.LookVector
         local End  = Start + (Direction *15)
         local Amount = 30
         local P1 = Start:Lerp(End, 0.5) + Vector3.new(0, Amount, 0)
@@ -109,10 +139,13 @@ Actor:BindToMessageParallel("Init", function(UID: string)
         local sy = task.synchronize
         local function Stop()
             sy()
-            Conn:Disconnect(); 
+            if Conn then Conn:Disconnect();  end
             ClientActor:SendMessage("DownNoHit", UID)
         end
-        local Sign = -1
+        local Origin = Body.Position
+        local ForwardRay = HitBox:Raycasting(Origin, Origin + Direction*4, 2)
+        local AxisRay = HitBox:Raycasting(Origin, Origin + Vector3.new(0, 10, 0), 4)
+        if ForwardRay or AxisRay then Stop(); return end
         sy()
         Conn = RunService.Heartbeat:Connect(function(a0: number)  
             local NewDelta = d
@@ -122,17 +155,21 @@ Actor:BindToMessageParallel("Init", function(UID: string)
                 NewDelta = 0
                 if NextPoint >= #CurvePoints then  Stop(); return  end
                 local Origin = Body.Position
-                local ForwardRay = HitBox:Raycasting(Origin, Origin + Direction*5, 2)
-                local AxisRay = HitBox:Raycasting(Origin, Origin + Vector3.new(0, -1 *Sign , 0), 4)
-                if ForwardRay or AxisRay then Stop(); return  end
-                if NextPoint >= Amount/2 then  Sign = 1 end
+                local End =  CurvePoints[NextPoint] 
+                local Dist = (End - Origin).Magnitude
+                local ForwardRay = HitBox:Raycasting(Origin, End, Dist)
+                -- local DownRay = HitBox:Raycasting(Origin, Origin + Vector3.new(0, -1, 0), 4)
+                local UpRay = HitBox:Raycasting(Origin, End + Vector3.new(0, 1, 0), 4)
+
+                if ForwardRay or UpRay then Stop(); return  end
+                --// if NextPoint >= Amount/2 then  Sign = 1 end
                 sy()
-                Body.Position = CurvePoints[NextPoint]
+                Body.Position = End
             end
             d = NewDelta
         end)
     end)
-    Actor:BindToMessageParallel("Jump", function() -- for other characters 
+    local J:any = Actor:BindToMessageParallel("Jump", function()  
         local Start = Body.Position 
         local End  = Start + Vector3.new(0, 22, 0) 
         local Amount = 20
@@ -162,8 +199,45 @@ Actor:BindToMessageParallel("Init", function(UID: string)
             end
             d = NewDelta
         end)
+    end) 
+    local AWS:any = Actor:BindToMessageParallel("AdjustWS", function(NewWs: number) --* forward Actor
+        OldWalkSpeed = WS
+        WS = NewWs
     end)
-    
+    local OldWS:any = Actor:BindToMessageParallel("OldWS", function() --* forward Actor
+        WS = OldWalkSpeed
+    end)
+    local LM:any = Actor:BindToMessageParallel("LockMove", function(Bool:boolean?) -- for other characters 
+        LockMovement = Bool
+    end)
+    table.insert(Connections, SF)
+    table.insert(Connections, SFR)
+    table.insert(Connections, SD)
+    table.insert(Connections, JWM)
+    table.insert(Connections, J)
+    table.insert(Connections, AWS)
+    table.insert(Connections, SFa)
+    table.insert(Connections, OldWS)
+    table.insert(Connections, LM)
+
+    --[[ semi working attempt at WallRunning
+    Actor:BindToMessageParallel("WallRun", function() 
+        --//////////////////////////////////////// TODO NEEEDS TESTING ///////////////////////////////////////////////
+        local Origin = Body.Position
+        local Direction = Body.CFrame.LookVector
+        local End = Body.Position + (Direction *1000)
+        local Distance = 5
+        local RR = HitBox:Raycasting(Origin, End, Distance)
+        if not RR then return end 
+        local Look = Body.Position + Body.CFrame.UpVector *1000
+        local NewCF = CFrame.lookAt(RR.Position, Look, RR.Normal) 
+        NewCF = NewCF * CFrame.new(0, Hip, 0)
+        task.synchronize()
+        Body.CFrame = NewCF
+        Character:SetAttribute("IsWallRun", true)
+        -- Character:SetAttribute("CameraType", "Horizontal")
+    end)    
+    ]]
     -- Actor:BindToMessageParallel("StopForward", function()
     --     Direction = Vector3.zero
     -- end)

@@ -1,9 +1,4 @@
---[[///////////////////TODO
-Change press and gold to only change direction and return its value
-]]
-
 --!native
-
 type ValueConnections = RBXScriptConnection | { RBXScriptConnection } | (... any) -> nil
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
@@ -11,20 +6,27 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 -- local player = game.Players.LocalPlayer
 
+local Clientactor  = script.Parent.Parent
 local Shared = ReplicatedStorage.Shared
 local SharedTypes = require(Shared.SharedType)
-local Task = require(Shared.CustomTask)
+-- local Task = require(Shared.CustomTask)
 type CustomHumanoid = SharedTypes.CustomHumanoid
 
-local EventHandler = require(script.Parent.Parent.Event_Handler)
+local EventHandler = require(Clientactor.Event_Handler)
 local CameraHandler = require(script.Camera_Handler)
-local Movement_Handler = require(script.Parent.Parent.Movement_handler)
+local ClientCombatMachine = require(Clientactor.ClientCombatMachine)
+local Movement_Handler = require(Clientactor.Movement_handler)
 local MovementHelper = require(Shared.MovementHelper)
 local HumanoidMachine = require(Shared.HumanoidMachine)
 
 local MoveKeys = {
     Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D,
 }
+local ToolKeys = {
+    Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four,
+    Enum.KeyCode.Five, Enum.KeyCode.Six, Enum.KeyCode.Seven, Enum.KeyCode.Eight,
+}
+
 local Connections: { [string]:  ValueConnections } = {}
 local InputHandler = {}
 local CharacterEvents: SharedTypes.CharacterEvents =  EventHandler["Events"]  
@@ -68,7 +70,7 @@ function B_() return Concatenate(KeyHolder) end
 local function PressnHold(Event)
     local Concat = Concatenate(KeyHolder)
     -- Movement_Handler:Walk(InputHandler["Character"], Event, Concat)
-    return MovementHelper:GiveDirection(InputHandler["Character"], Concat)
+    return MovementHelper:GiveDirection(InputHandler["Character"], Concat) :: CFrame
 end
 local InputStateFunctions = { 
     ["Begin"] =AddKeyMove,
@@ -78,7 +80,7 @@ local InputStateFunctions = {
     ["None"] =B_ 
 }
 local ConnectFuncs = {
-    function(...)
+    function(...) --* Move
         Connections["Move"] = function(actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) 
             local Event = CharacterEvents.Walk
             local Action = {
@@ -89,9 +91,10 @@ local ConnectFuncs = {
         end
         ContextActionService:BindAction("Move", Connections["Move"] , false, unpack(MoveKeys))    
     end,
-    function(...) Connections["Camera"] = CameraHandler:Start(...)
+    function(...) --* Camera 
+        Connections["Camera"] = CameraHandler:Start(...)
     end,
-    function(...)
+    function(...) --* Menu
         local Args  = ...
         Connections["M"] = function(actionName: string, inputState: Enum.UserInputState, inputObject: InputObject)
             if inputState == Enum.UserInputState.Begin and Connections["Camera"] then
@@ -106,38 +109,109 @@ local ConnectFuncs = {
         end 
         ContextActionService:BindAction("M", Connections["M"] , false, Enum.KeyCode.M)    
     end,
-    function(...)
-        --
-        local WallWalk = DateTime.now().UnixTimestampMillis
+    function(...) --* Jump
         Connections["Jump"] = function(actionName: string, inputState: Enum.UserInputState, inputObject: InputObject)
             local Event = CharacterEvents.Jump
+            local Character: Model = InputHandler["Character"]
             if inputState == Enum.UserInputState.Begin then
                 local Concat = GiveKeyMove()
-                local CurrentTime = DateTime.now().UnixTimestampMillis
-                if CurrentTime -WallWalk >=500 then
-                    WallWalk = CurrentTime
-                    -- wall run
-                    -- CF:
-                    return
+                --[[ -- failed wallrunning
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+                    Movement_Handler:Jump(Character, Event, Concat, true)
+                    return    
                 end
-                Movement_Handler:Jump(InputHandler["Character"], Event,  GiveKeyMove())
+                
+                ]]
+                Movement_Handler:Jump(Character, Event,  Concat)
             end
-            -- Task.DelayParallel(0.5, function() Movement_Handler.CheckPlayerCentrePosNetwork() end)
         end 
         ContextActionService:BindAction("Jump", Connections["Jump"] , false, Enum.KeyCode.Space)
+    end,   
+    function(...) --* Tool
+        Connections["Tool"] = function(actionName: string, inputState: Enum.UserInputState, inputObject: InputObject)
+            if inputState ~= Enum.UserInputState.Begin then  return end
+            local Frame = InputHandler["CurrentFrame"]
+            if not  Frame then return end 
+            local Event = CharacterEvents.Tool
+            local CurrentFrame: number = Frame
+            local FrameBuffer = buffer.create(2) -- gonna write key pressed u8
+            buffer.writeu8(FrameBuffer, 0, CurrentFrame)
+            ClientCombatMachine.TriggerAction(InputHandler["Character"], Event, "ToolHandle", inputObject.KeyCode.Name, FrameBuffer)
+            --TODO event fires go through client combat machine first
+        end
+        ContextActionService:BindAction("Tool", Connections["Tool"] , false, unpack(ToolKeys) )
+    end,
+    --TODO M1, M2, Block, Roll, Run
+    function(...) --* M1
+        Connections["M1"] = function(actionName: string, inputState: Enum.UserInputState, inputObject: InputObject)
+            if inputState ~= Enum.UserInputState.Begin then  return end
+            local Frame = InputHandler["CurrentFrame"]
+            if not Frame then return end
+            local Event = CharacterEvents.M1
+            local Character = InputHandler["Character"]
+            local FrameLookBuffer = buffer.create(5)
+            
+            buffer.writeu8(FrameLookBuffer, 0, Frame)
+            local ForwardlookCF:CFrame = MovementHelper:GiveDirection(Character, "W")
+            local RX = ForwardlookCF.LookVector.X *10000
+            local RZ = ForwardlookCF.LookVector.Z *10000
+            buffer.writei16(FrameLookBuffer, 1, RX)
+            buffer.writei16(FrameLookBuffer, 3, RZ)
+            ClientCombatMachine.TriggerAction(Character, Event, "M1", FrameLookBuffer)
+            --TODO event fires go through client combat machine first
+        end
+        ContextActionService:BindAction("M1", Connections["M1"] , false, Enum.UserInputType.MouseButton1)
+    end,
+    function(...) --* Run
+        local Run
+        Connections["Run"] = function(actionName: string, inputState: Enum.UserInputState, inputObject: InputObject)
+            if inputState ~= Enum.UserInputState.Begin then  return end
+            local Frame = InputHandler["CurrentFrame"]
+            if not  Frame then return end 
+            local Event = CharacterEvents.Run
+            local Character = InputHandler["Character"]
+            local FrameLookBuffer = buffer.create(1)
+            buffer.writeu8(FrameLookBuffer, 0, Frame)
+            if Run then  
+                Event = CharacterEvents.StopRun; Run = false
+                ClientCombatMachine.TriggerAction(Character, Event, "StopRun", FrameLookBuffer) 
+                return 
+            end
+            Run = true
+            ClientCombatMachine.TriggerAction(Character, Event, "Run", FrameLookBuffer)
+        end
+        ContextActionService:BindAction("Run", Connections["Run"] , false, Enum.KeyCode.LeftShift)
+    end,
+    function(...) --* Block 
+        --TODO ///////////////////////////////////////////// NEEDS TESTING///////////////////////////////////
+        local Block
+        Connections["Block"] = function(actionName: string, inputState: Enum.UserInputState, inputObject: InputObject)
+            local Proceed = false
+            if inputState == Enum.UserInputState.Begin then Proceed = true   end
+            if inputState == Enum.UserInputState.End then Proceed = true  end
+            if not Proceed then return end
+            local Frame = InputHandler["CurrentFrame"]
+            if not  Frame then return end 
+            local Event = CharacterEvents.Block
+            local Character = InputHandler["Character"]
+            local FrameLookBuffer = buffer.create(5)
+            buffer.writeu8(FrameLookBuffer, 0, Frame)            
+            if Block then  
+                Event = CharacterEvents.StopBlock; Block = false
+                ClientCombatMachine.TriggerAction(Character, Event, "StopBlock", FrameLookBuffer)
+                return 
+            end
+            Block = true
+            local ForwardlookCF:CFrame = MovementHelper:GiveDirection(Character, "W")
+            local RX = ForwardlookCF.LookVector.X *10000
+            local RZ = ForwardlookCF.LookVector.Z *10000
+            buffer.writei16(FrameLookBuffer, 1, RX)
+            buffer.writei16(FrameLookBuffer, 3, RZ)
+            ClientCombatMachine.TriggerAction(Character, Event, "Block", FrameLookBuffer)
+        end
+        ContextActionService:BindAction("Block", Connections["Block"] , false, Enum.KeyCode.F)
     end
 }
---[[ WallRun Turning Body
-local raycastResult =  -- assume you've set up the raycast correctly
-local normal = raycastResult.Normal
--- Create a look direction based on the normal
-local lookDir = Body.LookVector -- assuming your character's up direction is Y-axis
--- Create a new CFrame that orients the character to the wall
-local wallCFrame = CFrame.lookAt(raycastResult.Position, raycastResult.Position + lookDir, normal)
-
--- Apply the new CFrame to your character
-character.HumanoidRootPart.CFrame = wallCFrame
-]]
 function InputHandler:GiveConnections(...) 
     for _, Connections in ConnectFuncs do Connections(...) end
 end
@@ -164,49 +238,25 @@ function InputHandler:Unbind(actionName: string) ContextActionService:UnbindActi
     Connections[actionName] = nil
 end
 type action = { Func: (any) -> (...any), Values: {(RemoteEvent | UnreliableRemoteEvent)?} }
-
-local TickFunc, EventTickFunc
 function InputHandler:StartTick()  
-    -- local InputEvents = {}
-    -- local TickDelta,  Step = 0, 0.0332
-    -- TickFunc = RunService.Heartbeat:ConnectParallel(function(a0: number)  
-    --     TickDelta += a0
-    --     if TickDelta >= Step then
-    --         TickDelta = 0
-    --         local T = TickInputs
-    --         for StringIndex, Action: action in T do 
-    --             local Dir = Action.Func( unpack(Action.Values) )
-    --             table.insert(InputEvents, Dir)
-    --         end
-    --     end
-    -- end)
     local TickDelta,  Step = 0, 0.08
-    EventTickFunc = RunService.Heartbeat:ConnectParallel(function(a0: number)  
+    RunService.Heartbeat:ConnectParallel(function(a0: number)  
         TickDelta += a0
         if TickDelta >= Step then
             TickDelta = 0
-            --TODO fire LatestDir
             local T = TickInputs
-            local LatestDir
+            local RelativeDirCF: CFrame?
             for StringIndex, Action: action in T do 
                 local Dir = Action.Func( unpack(Action.Values) )
-                LatestDir = Dir
+                RelativeDirCF = Dir
             end
-            if not LatestDir then return end
-           
+            if not RelativeDirCF then return end
             local Character: Model = InputHandler["Character"]
-            -- local PosToSend: Vector3 = Movement_Handler:Walk(Character, LatestDir)
-            HumanoidMachine.TriggerAction(Character, CharacterEvents.Walk, "StartWalk", LatestDir)
-            
-            -- InputEvents = {} -- cleanup
+            HumanoidMachine.TriggerAction(Character, CharacterEvents.Walk, "StartWalk", RelativeDirCF)
         end
     end)
-
 end
-
 return InputHandler
-
-
 --[[ Info
 This module handles Clients inputs only when they are spawned 
 Connect to the CharacterEvents when Spawning in

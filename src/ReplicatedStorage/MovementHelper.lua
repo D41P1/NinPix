@@ -12,6 +12,36 @@ function Visualise(Pos: Vector3)
     Part.Parent = workspace
 end
 ]]
+
+--[[ New Calculation
+
+	--TODO_IMPORTANT/////: Notes to avoid character having a chance of being flung into non existence keep CanCollide On for a single part
+	local CharacterPos = Prim.Position -- Replace with Character PrimaryPart  
+	local CharacterCF = Prim.CFrame -- ↑↑↑same here↑↑↑
+	local NRCF = CFrame.new(Vector3.one) -- plain CF no Rotation
+	local NoRotateCF = CFrame.lookAt(CharacterPos, CharacterPos +NRCF.LookVector *50, CharacterCF.UpVector)
+	
+	local CamDirection = Cam.CFrame.LookVector
+	local NewCF = NoRotateCF * CFrame.new(CamDirection.X *150, 0, CamDirection.Z  *150)
+	local	NewDir = (NewCF.Position - CharacterPos).Unit
+	local Look = CharacterPos +NewDir *150 
+	local CF = CFrame.lookAt(CharacterPos, Look, CharacterCF.UpVector)
+	CamLookModel.PrimaryPart.CFrame = CF
+]]
+local RelativeDir = function(Character: Model,CamDirection:Vector3)
+	local Prim = Character.PrimaryPart
+    local CharacterPos = Prim.Position -- Replace with Character PrimaryPart  
+	local CharacterCF = Prim.CFrame -- ↑↑↑same here↑↑↑
+	local NRCF = CFrame.new(Vector3.zero) -- plain CF no Rotation
+	-- NRCF = CFrame.lookAlong(NRCF.Position, NRCF.LookVector, CharacterCF.UpVector)
+    local NoRotateCF = CFrame.lookAlong(CharacterPos, NRCF.LookVector, CharacterCF.UpVector)
+
+	local NewCF = NoRotateCF * CFrame.new(CamDirection.X *150, 0, CamDirection.Z  *150)
+	local NewDir = (NewCF.Position - CharacterPos).Unit
+	local Look = CharacterPos +NewDir *150 
+	local CF = CFrame.lookAt(CharacterPos, Look, CharacterCF.UpVector)
+	return CF
+end
 Movement_Helper["Walk"] = {
     W = function(Character): Vector3
         local CameraCFrame = Camera.CFrame
@@ -68,7 +98,8 @@ function Movement_Helper:Move(Character, HumanoidState, Key) return Movement_Hel
 function Movement_Helper:GiveDirection(Character, Key) 
     local Dir = Movement_Helper["Walk"][Key]
     if not Dir then return end
-    return Dir(Character)
+    local Direction:Vector3 = Dir(Character)
+    return RelativeDir(Character, Direction) :: CFrame
 end
 
 return Movement_Helper

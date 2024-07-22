@@ -3,9 +3,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage.Shared
 local player: Player = game.Players.LocalPlayer
+local MyUID = player:GetAttribute("UID")
+
 local CharacterActors = workspace.WorkSpaceFolder:WaitForChild("CharacterActors")
 local Character
-local ServerActor: Actor = CharacterActors:WaitForChild(player.Name)
+local ServerActor: Actor = CharacterActors:WaitForChild(MyUID)
 local ClientActor = script.Parent.Parent
 
 -- local CurrentNetworkPartitionEvent: UnreliableRemoteEvent
@@ -22,9 +24,7 @@ local NetworkHandler = require(script.NetworkHandler)
 local AttributeHandler = require(script.Attribute_Handler)
 local Checks = require(script.Checks)
 
-local MyUID = player:GetAttribute("UID")
--- local NetWorkHashMap = Map_Manager:GetMapType("NetworkHashMap")
--- local RenderHashMap = Map_Manager:GetMapType("RenderHashMap")
+export type Profile = SharedType.Profile
 local  Character_Handler = {} 
 local MT = setmetatable({}, {
     __call = function(_, Data) Character_Handler[Data.Func](Data) end
@@ -42,10 +42,11 @@ function Character_Handler.Spawn(Character: Model, Data, Humanoid: SharedType.Cu
     local Hip = Data.Hip
     local WS = Data.WalkSpeed
     Cleanup_Manager:Profile(UID)
-    Character.Parent = ServerActor
-    AttributeHandler:SetTheAttributes(Character, "Humanoid")
+    Character.Parent = workspace.Bodies
+    AttributeHandler:SetTheAttributes(Character, "Humanoid", Data)
     Character:PivotTo(CFrame.new(Pos + Vector3.new(0, Hip, 0)))
     Character:SetAttribute("WalkSpeed", WS)
+    Character:SetAttribute("BaseWalkSpeed", WS)
     
     Character:AddTag(UID)
     OtherPlrs[UID] = {
@@ -53,10 +54,12 @@ function Character_Handler.Spawn(Character: Model, Data, Humanoid: SharedType.Cu
         ["Avatar"] = Character,
         ["Humanoid"] = Humanoid
     }
+    local Body = Character.PrimaryPart
+    Body.CollisionGroup = "Chars" 
     GiveAnims(Humanoid)
     Cleanup_Manager:Insert(UID, Character)
     Cleanup_Manager:Insert(UID, Actor)
-    return Humanoid
+    return Character_Handler.GiveProfile(UID)
 end
 function GiveAnims(Humanoid: SharedType.CustomHumanoid)
     local Animator: Animator = Humanoid.Animator 
@@ -67,67 +70,26 @@ function GiveAnims(Humanoid: SharedType.CustomHumanoid)
     }
     for _ , Anims: AnimationTrack in AnimsLoaded do
         local AnimName = AnimNamesTable[Anims.Name]
+        if not AnimName then continue end 
         if string.match(Anims.Name, AnimName) then Humanoid[AnimName] = Anims end    
     end 
 end
---[[
-function Character_Handler.InitChar(Data) task.desynchronize() 
-    local UID: string = Data.UID
-    if UID == MyUID then return end -- Clients character, look at Spawn Func !
-    local NetPartNumber = Data.NetPartNumber
-    local Hip: Vector3 = Vector3.new(0, Data.HipHeight, 0)
-    local Pos: Vector3 = Data.CurrentPos or NetWorkHashMap[ NetPartNumber ]
-    local CF: CFrame = CFrame.new(Pos + Hip)  
-    task.synchronize()
-    local OtherActor = script.Parent.Parent.OtherActor:Clone()
-    local OtherCharacterScript = OtherActor.OtherCharacter
-    OtherCharacterScript.Enabled = true
-    OtherActor.Name = UID
-    Cleanup_Manager:Profile(UID)
-    
-    local Avatar = ReplicatedStorage.Character.PixelDummy:Clone()
-    Avatar:SetAttribute("UID", UID)
-    Avatar:SetAttribute("Hip", Data.HipHeight)
-    Avatar:PivotTo(CF)
-    Avatar:AddTag(UID)
-    Avatar.Name = UID
-    
-    Avatar.Parent = CharacterActors
-    OtherActor.Parent  = ClientActor
-    OtherPlrs[UID] = {
-        ["Actor"] = OtherActor, ["Avatar"] = Avatar,
-        --TODO avatar data 
-    }
-    Task.DelayParallel(1, function() print("fired to other character"); Data.Func = "Load"; OtherActor:SendMessage("Info", Data)end)
-    Cleanup_Manager:Insert(UID, Avatar)
-    Cleanup_Manager:Insert(UID, OtherPlrs[UID])
-    Cleanup_Manager:Insert(UID, OtherActor)
-    print("made Character: ", OtherPlrs)
-end
-
-]]
-export type Profile = {
-    UID: string,
-    Actor: Actor,
-    Avatar: Model,
-    Humanoid: SharedType.CustomHumanoid,
-    Forward: Actor,
-    Down: Actor,
-}
 function Character_Handler.CheckMove(Data)
     local UID: string = Data.UID
     local OtherProfile: Profile = OtherPlrs[UID]
+    if not OtherProfile then  return end --* during an NPC Init this might prevent a temporary error SO KEEP IT !!! 
     local Avatar = OtherProfile.Avatar
     local AvatarBody = Avatar.PrimaryPart
     local Origin:Vector3 = AvatarBody.Position
     local CF: CFrame = Data.CurrentCF
-    if (Origin- CF.Position).Magnitude > 2 then 
+    if (Origin- CF.Position).Magnitude > 6 then 
         task.synchronize()
-        -- AvatarBody.CFrame  = CF
-        -- print("RolledBack")
+        AvatarBody.CFrame  = CF
+        --// print("RolledBack")
     end
     if UID == MyUID then  return end
-    HumanoidMachine.TriggerAction(Avatar, nil, "StartWalk", CF)
+    AvatarBody.CFrame = CF --* this is to keep Player in Sync Humanoid States not used for other players
+    -- HumanoidMachine.TriggerAction(Avatar, nil, "StartWalk", CF)
 end
 function Character_Handler.StopMove(Data)
     local UID: string = Data.UID
@@ -156,15 +118,41 @@ function Character_Handler.Jump(Data)
     Data.Action = "Jump"
     OtherProfile.Actor:SendMessage("Info", Data)
 end 
-
 function Character_Handler:CheckPlayerCentrePosNetwork()    
     local ClosestNetworkPartitionNumber: number = Map_Manager.GiveClosestNetPartition() 
     if not ClosestNetworkPartitionNumber then warn("DID NOT get closestnetpartition"); return end
     -- NetworkHandler:CheckNetworkPartition(ClosestNetworkPartitionNumber)
     return ClosestNetworkPartitionNumber:: number
 end
+function Character_Handler.ChangeCharProperty(UID:string, Property:string, Value:any)
+    local Profile: Profile = OtherPlrs[UID]
+    if not Profile then warn("No StateMachine", Profile) end
+    local Char = Profile.Avatar 
+    if not Char:GetAttribute(Property) then warn("incorrect Property: ", Property); return end
+    Char:SetAttribute(Property, Value)
+end
+function Character_Handler.SetHealth(Char:Model, Health:number)
+    task.synchronize()
+    if Health <= 0 then  Char:SetAttribute("Health", 0);  return  end
+    Char:SetAttribute("Health", Health)
+    return
+end
+function Character_Handler.SetPosture(Char:Model, Posture:number)
+    task.synchronize()
+    if Posture <= 0 then  Char:SetAttribute("Posture", 0);  return  end
+    Char:SetAttribute("Posture", Posture)
+    return
+end
+
+function Character_Handler.InitStats(Character, StatBuffer: buffer)
+    AttributeHandler:SetStats(Character, StatBuffer)
+end
+
 function Character_Handler.GiveCharacter() return Character end
-function Character_Handler.GiveProfile(UID:string) return OtherPlrs[UID] end
+function Character_Handler.GiveProfile(UID:string) 
+    if not OtherPlrs[UID] then warn("no Profile"); return end 
+    return OtherPlrs[UID] :: Profile
+end
 
 NetworkHandler:Init(MT)--/////////////////IMPORTANT
 return Character_Handler

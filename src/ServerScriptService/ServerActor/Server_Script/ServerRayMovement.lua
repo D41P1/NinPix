@@ -35,7 +35,7 @@ function ServerRayMovement:RayWalk(Data, Direction: Vector3, CustomHumanoid: Cus
     local NewDirCF  =  Direction
     local Caller = ServerRayMovement["Caller"]
             
-    local FirstRayEndPoint = NewDirCF --* CFrame.new(0, 1.5, 0) -- hit a wall
+    local FirstRayEndPoint = NewDirCF --* CFrame.new(0, 2, 0) -- hit a wall
     local SecondRayStartPoint: CFrame
     local SecondRayEndPoint: CFrame 
     local SecondRay: RaycastResult?

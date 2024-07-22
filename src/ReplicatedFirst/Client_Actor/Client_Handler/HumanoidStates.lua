@@ -7,10 +7,10 @@ local Shared = ReplicatedStorage.Shared
 -- local Map_Manager = require(ReplicatedStorage.Shared.Map_Manager)
 local SharedTypes = require(Shared.SharedType)
 local Event_Manager = require(Shared.Event_Manager)
-local RayMovement = require(Shared.RayMovement)
+-- local RayMovement = require(Shared.RayMovement)
 -- local ClientActor = script.Parent.Parent
 local CharacterHandler = require(script.Parent.Character_Handler)
-local MovementHelper = require(Shared.MovementHelper)
+-- local MovementHelper = require(Shared.MovementHelper)
 local Buffer_Converter = require(Shared.Buffer_Converter)
 
 type CustomHumanoid = SharedTypes.CustomHumanoid
@@ -21,32 +21,28 @@ type Machine = SharedTypes.Machine
 --/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 local HumanoidStates = {
     ["Walk"] = {
-        StopWalk = function(HumanoidMachine: Machine, Character: Model, _: Events, EndPos: Vector3?)
+        StopWalk = function(HumanoidMachine: Machine, Character: Model, Event: Events, EndPos: Vector3?)
             local UID = Character.Name
             local Humanoid: CustomHumanoid = HumanoidMachine[UID]
             if not  Humanoid then return end
             local sy =  task.synchronize
             if  Humanoid.MoveTracker then sy(); Humanoid.MoveTracker:Pause(); Humanoid.MoveTracker:Destroy() end
             if Humanoid.Walk then sy(); Humanoid.Walk:Stop(0.5); Humanoid.IsWalking = false end
-            -- if Event then Event_Manager:FireToServer(Event) end
+            if Event then Event_Manager:FireToServer(Event) end
             HumanoidMachine.ChangeState(UID, "Idle")
         end,        
-        StartWalk = function(HumanoidMachine: Machine, Character: Model, Event: Events, Direction: Vector3)task.desynchronize()
+        StartWalk = function(HumanoidMachine: Machine, Character: Model, Event: Events, RelativeDirCF: CFrame)task.desynchronize()
             local UID = Character.Name
             local WS =  Character:GetAttribute("WalkSpeed")
             local Humanoid: CustomHumanoid = HumanoidMachine[UID]
-            local function playAnim() task.synchronize(); Humanoid.Walk:Play(); Humanoid.IsWalking = true; Humanoid.Walk:AdjustSpeed(WS/10)  end
+            if not Humanoid.IsWalking then task.synchronize(); Humanoid.Walk:Play(); Humanoid.IsWalking = true; Humanoid.Walk:AdjustSpeed(WS/10) end
+            local b:buffer = Buffer_Converter.PosWriter(RelativeDirCF.Position, RelativeDirCF.LookVector, RelativeDirCF.UpVector)
+            if Event then   Event_Manager:RawFireToServer(Event, b) end
+            
             local OtherProfile: CharacterHandler.Profile = CharacterHandler.GiveProfile(UID)
             if not OtherProfile then warn("no OtherProfile"); return end
-            local Body  = Character.PrimaryPart
-            local RelativeDirCF:CFrame = CFrame.new(Direction.X *100, 0, Direction.Z *100)
-            local CharacterCF:CFrame = Body.CFrame
-            local NewDirCF:CFrame  =  CharacterCF * CFrame.Angles(0, -math.rad(Body.Orientation.Y), 0) * RelativeDirCF           
-            local b:buffer = Buffer_Converter.PosWriter(NewDirCF)
-            if Event then   Event_Manager:RawFireToServer(Event, b) end
-            if not Humanoid.IsWalking then playAnim()  end
-            OtherProfile.Forward:SendMessage("StartForward", NewDirCF.Position)
-            OtherProfile.Down:SendMessage("StartDownward", NewDirCF)
+            OtherProfile.Forward:SendMessage("StartForward", RelativeDirCF)
+            OtherProfile.Down:SendMessage("StartDownward", RelativeDirCF)
         end,
         Jump = function(HumanoidMachine: Machine, Character: Model, Event: Events, ...)
             local Humanoid: CustomHumanoid = HumanoidMachine[Character.Name]
@@ -75,14 +71,24 @@ local HumanoidStates = {
         end,
     },
     ["Jump"] = {
-        Jump = function(HumanoidMachine: Machine, Character: Model, Event: Events, Direction: Vector3?)
+        Jump = function(HumanoidMachine: Machine, Character: Model, Event: Events, RelativeDirCF: CFrame?, ...)
             local UID = Character.Name
-            HumanoidMachine.ChangeState(UID, "Fall")
-            -- if  Event then Event_Manager:FireToServer(Event, Direction) end -- TODO
+            HumanoidMachine.ChangeState(UID, "Fall")        
             local OtherProfile: CharacterHandler.Profile = CharacterHandler.GiveProfile(UID)
             if not OtherProfile then warn("no OtherProfile"); return end
             local DownActor = OtherProfile.Down 
-            if Direction then   DownActor:SendMessage("JumpWithMovement", Direction); return end
+            local Writei16 = buffer.writei16
+            if RelativeDirCF then   
+                local b = buffer.create(6)
+                local Look = RelativeDirCF.LookVector
+                Writei16(b, 0, Look.X *10000)
+                Writei16(b, 2, Look.Y *10000)
+                Writei16(b, 4, Look.Z *10000)
+                if  Event then Event_Manager:RawFireToServer(Event, b) end 
+                DownActor:SendMessage("JumpWithMovement", RelativeDirCF); 
+                return 
+            end
+            if Event then Event_Manager:RawFireToServer(Event, buffer.create(0)) end 
             DownActor:SendMessage("Jump")
         end,
         ReleaseJump = function(HumanoidMachine: Machine, Character: Model, ...) HumanoidMachine.ChangeToOldState(Character.Name)  end,
@@ -96,7 +102,16 @@ local HumanoidStates = {
         end,
     }
 }
+--[[failed wallrun
+if WallRun  and Character:GetAttribute("WallRun") then
+    DownActor:SendMessage("WallRun", RelativeDirCF); 
+    HumanoidMachine.TriggerAction(Character, nil, "ReleaseFall");
 
+    return
+end
+            
+]]
+            
 
 
 return HumanoidStates

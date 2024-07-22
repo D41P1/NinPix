@@ -4,69 +4,60 @@ Humanoid Controller State Module for Humanoids server
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScript = script.Parent
+--local ServerScript = script.Parent
 local Shared = ReplicatedStorage.Shared
 local SharedTypes = require(Shared.SharedType)
-local ServerRayMovement = require(ServerScript.ServerRayMovement)
+--//local ServerRayMovement = require(ServerScript.ServerRayMovement)
 type CustomHumanoid = SharedTypes.CustomHumanoid
 type Events = RemoteEvent --| UnreliableRemoteEvent
 type Machine = SharedTypes.Machine
 local Humanoid_Controller = {
     ["Walk"] = {
-        StopWalk = function(HumanoidMachine: Machine, Character: Model) task.desynchronize()
-            HumanoidMachine.ChangeState(Character.Name, "Idle")
-            local Humanoid: CustomHumanoid = HumanoidMachine[Character.Name]
-            if not  Humanoid then return end
-            if Humanoid.MoveTracker then task.synchronize(); Humanoid.MoveTracker:Pause(); Humanoid.MoveTracker:Destroy(); Humanoid.MoveTracker = nil end
-            -- ServerRayMovement:CheckFalling(Character, HumanoidMachine, Humanoid)
+        StopWalk = function(HumanoidMachine: Machine, UID: string) task.desynchronize()
+            HumanoidMachine.ChangeState(UID, "Idle")
+            --// local Humanoid: CustomHumanoid = HumanoidMachine[UID]
+            --// if not  Humanoid then return end
+            --// if Humanoid.MoveTracker then task.synchronize(); Humanoid.MoveTracker:Pause(); Humanoid.MoveTracker:Destroy(); Humanoid.MoveTracker = nil end
+            --// ServerRayMovement:CheckFalling(UID, HumanoidMachine, Humanoid)
         end,        
-        StartWalk = function(HumanoidMachine: Machine, Data, HOLDER, Direction: Vector3)task.desynchronize()
-            local Humanoid: CustomHumanoid = HumanoidMachine[Data.UID]
+        StartWalk = function(HumanoidMachine: Machine, UID:string, Event: Events, CF: CFrame,  ForwardActor: Actor, DownwardsActor: Actor)
             task.desynchronize()
-            -- /////////////////////////No Server Character now /////////////////////////////
-            ServerRayMovement:RayWalk(Data, Direction, Humanoid, HumanoidMachine) 
-            
-            -- This POS is the Predicted POS which should be Ahead of the Client
-            -- TODO MessageAPI fire to SSSActor to put {UID,POS,DIRECTION,SPEED} to put into Tick
-            -- Then Client Cancels Move and then Moves to the POS LookAt DIRECTION travelling at the SPEED        
+            ForwardActor:SendMessage("StartForward", CF)
+            DownwardsActor:SendMessage("StartDownward", CF)
         end,
-        Jump = function(HumanoidMachine: Machine, Character: Model, Event: Events, Key: string)
-            HumanoidMachine.ChangeState(Character.Name, "Jump", "Walk")
-            HumanoidMachine.TriggerAction(Character, Event, "Jump", Key)
+        Jump = function(HumanoidMachine: Machine, UID: string, Event: Events, ...)
+            HumanoidMachine.ChangeState(UID, "Jump", "Walk")
+            HumanoidMachine.ServerTriggerAction(UID, Event, "Jump", ...)
         end, 
-        Fall = function(HumanoidMachine: Machine, Character: Model, Event: Events, Key: string)
-            local Humanoid: CustomHumanoid = HumanoidMachine[Character.Name]
+        Fall = function(HumanoidMachine: Machine, UID: string, Event: Events, Key: string)
+            local Humanoid: CustomHumanoid = HumanoidMachine[UID]
             if not  Humanoid then return end
             if  Humanoid.MoveTracker then task.synchronize(); Humanoid.MoveTracker:Pause(); Humanoid.MoveTracker:Destroy() end
             Humanoid.Walk:Stop(); Humanoid.IsWalking = false
-            HumanoidMachine.ChangeState(Character.Name, "Fall", "Walk")
+            HumanoidMachine.ChangeState(UID, "Fall", "Walk")
         end
     },
     ["Idle"] = {
-        StartWalk = function(HumanoidMachine: Machine, Character: Model, Event: Events, Key: string)
-            HumanoidMachine.ChangeState(Character.Name, "Walk")
-            HumanoidMachine.TriggerAction(Character, Event, "StartWalk", Key)
+        StartWalk = function(HumanoidMachine: Machine, UID, Event: Events, ...)
+            HumanoidMachine.ChangeState(UID, "Walk")
+            HumanoidMachine.ServerTriggerAction(UID, Event, "StartWalk", ...)
         end,
-        Jump = function(HumanoidMachine: Machine, Character: Model, Event: Events)
-            HumanoidMachine.ChangeState(Character.Name, "Jump", "Idle")
-            HumanoidMachine.TriggerAction(Character, Event, "Jump")
+        Jump = function(HumanoidMachine: Machine, UID: string, Event: Events, ...)
+            HumanoidMachine.ChangeState(UID, "Jump", "Idle", ...)
+            HumanoidMachine.ServerTriggerAction(UID, Event, "Jump", ...)
         end,
     },
     ["Jump"] = {
-        Jump = function(HumanoidMachine: Machine, Character: Model, Event: Events, Direction: Vector3)
-            -- ServerRayMovement:Jump(Character, Direction, HumanoidMachine)            
+        Jump = function(HumanoidMachine: Machine, UID: string, Event: Events, Direction: Vector3, ForwardActor: Actor)
+            if not Direction then  ForwardActor:SendMessage("Jump"); return end
+            ForwardActor:SendMessage("JumpWithMovement", Direction)
+            --// ServerRayMovement:Jump(UID, Direction, HumanoidMachine)
         end,
-        ReleaseJump = function(HumanoidMachine: Machine, Character: Model, ...) HumanoidMachine.ChangeToOldState(Character.Name)  end,
-        Fall = function(HumanoidMachine: Machine, Character: Model, Event: Events, Key: string) HumanoidMachine.ChangeState(Character.Name, "Fall") end
+        ReleaseJump = function(HumanoidMachine: Machine, UID: string, ...) HumanoidMachine.ChangeToOldState(UID, ...)  end,
+        Fall = function(HumanoidMachine: Machine, UID: string, Event: Events, ...) HumanoidMachine.ChangeState(UID, "Fall", ...) end
     },
     ["Fall"] = {
-        ReleaseFall = function(HumanoidMachine: Machine, Character: Model, ...)HumanoidMachine.ChangeToOldState(Character.Name)  end,
-        StopWalk = function(HumanoidMachine: Machine, Character: Model)
-            local Humanoid: CustomHumanoid = HumanoidMachine[Character.Name]
-            if not  Humanoid then return end
-            task.desynchronize()
-            -- ServerRayMovement:CheckFalling(Character, HumanoidMachine, Humanoid)
-        end,
+        ReleaseFall = function(HumanoidMachine: Machine, UID: string, ...)HumanoidMachine.ChangeToOldState(UID)  end,
     }
 }
 

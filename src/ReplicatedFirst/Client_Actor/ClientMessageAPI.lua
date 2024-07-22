@@ -1,8 +1,8 @@
 local ClientActor = script.Parent
 local ClientMessageAPI = {}
 
-function ClientMessageAPI.SendToClientActor(Topic:string, HitPos: Vector3?)
-    ClientActor:SendMessage(Topic, HitPos)
+function ClientMessageAPI.SendToClientActor(Topic:string, ...)
+    ClientActor:SendMessage(Topic, ...)
 end
 function ClientMessageAPI.InitClient(ActorParent)    
     local ForwardActor = script.Parent.MoveActor:Clone()
@@ -15,6 +15,11 @@ function ClientMessageAPI.InitClient(ActorParent)
     DownActor.ClientRayScript.Enabled = true
     DownActor.Parent = ActorParent
 
-    return ForwardActor, DownActor
+    local HBActor = script.Parent.MoveActor:Clone()
+    HBActor.Name = "HBActor"
+    HBActor.DetectScript.Enabled = true
+    HBActor.Parent = ActorParent
+
+    return ForwardActor, DownActor, HBActor
 end
 return ClientMessageAPI

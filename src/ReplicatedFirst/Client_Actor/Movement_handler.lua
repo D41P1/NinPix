@@ -36,10 +36,9 @@
 ]]
 local ReplicateStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicateStorage.Shared
-local SharedTypes = require(Shared.SharedType)
-local Map_Manager = require(Shared.Map_Manager)
-local CharacterHandler = require(script.Parent.Client_Handler.Character_Handler)
-local Events: SharedTypes.CharacterEvents = require(script.Parent.Event_Handler)["Events"]
+-- local SharedTypes = require(Shared.SharedType)
+-- local Map_Manager = require(Shared.Map_Manager)
+-- local CharacterHandler = require(script.Parent.Client_Handler.Character_Handler)
 local HumanoidMachine = require(Shared.HumanoidMachine)
 local MovementHelper = require(Shared.MovementHelper) 
 local player = game.Players.LocalPlayer
@@ -61,23 +60,29 @@ local Movement_Handler = {
     ["DS"] = HumanoidMachine.TriggerAction,
     ["Stop"] = HumanoidMachine.TriggerAction,
 }
-local NetHashmap = Map_Manager:GetMapType("NetworkHashMap")
+-- local NetHashmap = Map_Manager:GetMapType("NetworkHashMap")
 function Movement_Handler:Walk(Character: Model, Direction: Vector3)
     local Body = Character.PrimaryPart
     local CharacterPos = Body.Position
-    local PosToSend = CharacterPos + (Direction *1.5) 
+    local PosToSend = CharacterPos + (Direction *2) 
     return PosToSend
 end
 function Movement_Handler:Jump(Character: Model, Event: UnreliableRemoteEvent, Key: string)
     if RateLimiter.ClientCheck(PlayerName, "Jump") then return end    
-    if not  Movement_Handler[Key] then HumanoidMachine.TriggerAction(Character, Event, "Jump"); return end  
-    local Dir  = MovementHelper:GiveDirection(Character, Key)
-    HumanoidMachine.TriggerAction(Character, Event, "Jump", Dir)
+    if not  Movement_Handler[Key] then HumanoidMachine.TriggerAction(Character, Event, "Jump", nil); return end  
+    local RelativeDirCF: CFrame  = MovementHelper:GiveDirection(Character, Key)
+    HumanoidMachine.TriggerAction(Character, Event, "Jump", RelativeDirCF)
+    --[[
+        if WallRun then
+            HumanoidMachine.TriggerAction(Character, Event, "Jump", nil, true)        
+            return
+        end
+    ]]
 end
-function Movement_Handler.CheckPlayerCentrePosNetwork()
-    local Character: Model = CharacterHandler.GiveCharacter()
-    local _, Nearest = Map_Manager:NetworkPartitionCentrePosCheck(Character, NetHashmap)
-    Map_Manager.SetClosestNetPartition(Nearest)
-end
+-- function Movement_Handler.CheckPlayerCentrePosNetwork()
+--     local Character: Model = CharacterHandler.GiveCharacter()
+--     local _, Nearest = Map_Manager:NetworkPartitionCentrePosCheck(Character, NetHashmap)
+--     Map_Manager.SetClosestNetPartition(Nearest)
+-- end
 
 return Movement_Handler

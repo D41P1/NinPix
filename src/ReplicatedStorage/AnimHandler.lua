@@ -14,11 +14,9 @@ end
 function AnimHandler: GetAnim(NameOfAnim: string) return AnimHandler[NameOfAnim] end
 function AnimHandler:LoadAnim(NameOfAnim: string, A:Animator) 
     local Anim:Animation = AnimHandler[NameOfAnim]
-    if not Anim  then return end
-    task.synchronize()
-    return A:LoadAnimation(Anim)
+    if Anim  then  task.synchronize(); return A:LoadAnimation(Anim) :: AnimationTrack     end
+    return
 end
-
 function AnimHandler:loadAnims(Animator: Animator, TypesOfBody: string)
     local T = {}
     for AnimName,  Anim in AnimHandler do

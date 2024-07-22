@@ -1,11 +1,11 @@
 --!native
-local CalloutService = game:GetService("CalloutService")
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local CharacterBox = require(script.Parent.CharacterBox)
 local ServerTypes = require(script.Parent.ServerTypes)
 local NetworkEvent = ReplicatedStorage.FromServer.NotifyEvent
+local RunTimeCFFolder = script.Parent.RunTimeCF_Values 
 -- actions will be added through MessageAPI  ONLY
 
 local ServerTick = { 
@@ -33,31 +33,44 @@ local Buffer_Converter = require(ReplicatedStorage.Shared.Buffer_Converter)
 ]]
 export type profile = { CurrentCF: CFrame,  PlayerName: string }
 local PlayerProfiles = {}
-function ServerTick.InitPlayerProfile(PlayerName: string, UID: string, Pos: Vector3)
-    PlayerProfiles[UID] = {
-        ["CurrentCF"] = CFrame.new(Pos) ,
-    }
+function ServerTick.InitMovementProfile(UID: string, Pos: Vector3)
+    local CF = CFrame.new(Pos)
+    local CFV = Instance.new("CFrameValue")
+    local Body = Instance.new("Part")
+    task.synchronize()
+    CFV.Value = CF
+    CFV.Name = UID
+    CFV:AddTag(UID.."CFV")
+    CFV.Parent = RunTimeCFFolder
+
+    Body.Name = UID
+    Body.CFrame = CF
+    Body.CanCollide = false
+    Body.Anchored = true
+    Body.Transparency = 0 --TODO change to 1
+    Body:AddTag(UID.."Body")
+    Body.Parent = workspace.CurrentCamera["SBF"]
+    
+    -- TODO Add Part that also cos NPC HitDetection
+    -- *Parent the Part  workspace.CurrentCamera["SBF"]   
 end
-function ServerTick.ChangeProfile(UID: string, ValueToChange:string, Value: any)
-    local Profile:profile  = PlayerProfiles[UID]     
-    if not Profile then return end
-    Profile[ValueToChange] = Value
+function ServerTick.GiveProfs()
+    return PlayerProfiles
 end
 local Tick = function()
-    local b = buffer.create(20*30)
+    local b = buffer.create(24*30)
     local StringW = buffer.writestring
     local offset = 0
-    local T = PlayerProfiles
-    for UID:string, Values:profile in T do
+    local T = RunTimeCFFolder:GetChildren()
+    for _, Values:CFrameValue in T do
+        local UID = Values.Name
         StringW(b, offset, UID)
         offset += 1
-        local CF = Values.CurrentCF
-        -- local Pos = CF.Position
-        Buffer_Converter.PosWriter(CF , b, offset)
-        offset += 19
-        -- print(Pos)
-        --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓        ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-        --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ REMOVE ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+        local CF = Values.Value
+        Buffer_Converter.PosWriter(CF.Position, CF.LookVector, CF.UpVector , b, offset)
+        offset += 24
+
+        --TODO ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ REMOVE ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
         task.synchronize()
         local Part = Instance.new("Part")
         Part.CFrame = CF
@@ -66,8 +79,7 @@ local Tick = function()
         Part.Transparency = 0.6
         Debris:AddItem(Part, 0.5)
         Part.Parent = workspace
-        --↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ REMOVE ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
-        --↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑        ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+        --TODO ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ REMOVE ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
     end
     task.synchronize()
     NetworkEvent:FireAllClients(b)  

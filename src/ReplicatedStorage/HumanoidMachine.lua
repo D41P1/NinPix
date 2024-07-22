@@ -34,13 +34,13 @@ function HumanoidMachine:InitHumanoid(Character, StateMachine)
     HumanoidMachine[Character.Name] = Humanoid
     return Humanoid
 end 
-function HumanoidMachine:InitServerHumanoid(Character, StateMachine: any)
+function HumanoidMachine:InitServerHumanoid(UID, StateMachine: any)
     local Humanoid = { 
         ["CurrentState"] = "Idle",
         ["OldState"] = "Idle",
         ["StateMachine"] = StateMachine
     }
-    HumanoidMachine[Character.Name] = Humanoid
+    HumanoidMachine[UID] = Humanoid
     return Humanoid
 end
 function HumanoidMachine.TriggerAction(Character: Model, Event: UnreliableRemoteEvent?,  Action: string, ...)
@@ -51,26 +51,33 @@ function HumanoidMachine.TriggerAction(Character: Model, Event: UnreliableRemote
 end
 function HumanoidMachine.ServerTriggerAction(UID: string, Event: RemoteEvent?,  Action: string, ...)
     local Humanoid: StateMachine = HumanoidMachine[UID]
+    if not Humanoid then warn("No StateMachine", Humanoid) end
     local HumanoidStates = Humanoid.StateMachine
     if not HumanoidStates[Humanoid.CurrentState][Action] then  return end    
     HumanoidStates[Humanoid.CurrentState][Action](HumanoidMachine, UID, Event, ...)
 end
-
-function  HumanoidMachine.ChangeState(PlayerName: string, NewState: string, OldState: string?)
-    local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[PlayerName]
+function  HumanoidMachine.ChangeState(UID: string, NewState: string, OldState: string?)
+    local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[UID]
+    if not Humanoid then warn("No StateMachine", Humanoid) end
     local HumanoidStates = Humanoid.StateMachine
     if Humanoid.IsLocked then return end
     if not HumanoidStates[NewState] then return end
-    if OldState then  HumanoidMachine[PlayerName].OldState = OldState end
-    HumanoidMachine[PlayerName].CurrentState = NewState
+    if OldState then  HumanoidMachine[UID].OldState = OldState end
+    HumanoidMachine[UID].CurrentState = NewState
 end
-function  HumanoidMachine.ForceState(PlayerName: string, NewState: string, OldState: string?)
-    local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[PlayerName]
-    local HumanoidStates = Humanoid.StateMachine
+function  HumanoidMachine.ForceState(UID: string, NewState: string, OldState: string?)
+    local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[UID]
+    if not Humanoid then warn("No StateMachine", Humanoid) end
+    local HumanoidStates:{ [string]: (any) -> any } = Humanoid.StateMachine
     if not HumanoidStates[NewState] then return end
-    if OldState then  HumanoidMachine[PlayerName].OldState = OldState end
-    HumanoidMachine[PlayerName].CurrentState = NewState
+    if OldState then  HumanoidMachine[UID].OldState = OldState end
+    HumanoidMachine[UID].CurrentState = NewState
 end
-
-function  HumanoidMachine.ChangeToOldState(PlayerName: string) HumanoidMachine[PlayerName].CurrentState = HumanoidMachine[PlayerName].OldState end
+function HumanoidMachine.ChangeHumanoidProperty(UID:string, Property:string, Value:any)
+    local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[UID]
+    if not Humanoid then warn("No StateMachine", Humanoid) end
+    if not Humanoid[Property] then warn("incorrect Property: ", Property); return end
+    Humanoid[Property] = Value
+end
+function  HumanoidMachine.ChangeToOldState(UID: string) HumanoidMachine[UID].CurrentState = HumanoidMachine[UID].OldState end
 return HumanoidMachine

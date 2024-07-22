@@ -26,13 +26,13 @@ local bufferCreate = buffer.create
 
 local function alloc(bytes: number)
 	if not (cursor + bytes >= size) then return end
-	size = math.round(size * 1.5)
+	size = math.round(size * 2)
 	local newBuffer = bufferCreate(size)
 	bufferCopy(newBuffer, 0, buff)
 	buff = newBuffer
 end
 local function dyn_alloc(bytes: number)
-	repeat 	size = math.round(size * 1.5)
+	repeat 	size = math.round(size * 2)
 	until cursor + bytes < size
 	local newBuffer = buffer.create(size)
 	buffer.copy(newBuffer, 0, buff)

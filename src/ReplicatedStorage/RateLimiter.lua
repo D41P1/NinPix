@@ -14,7 +14,7 @@ function RateLimiter.InitProfile(PlayerName: string)
             Count = 0
         },
         Jump = {
-            Limit = 8,
+            Limit = 11,
             LastMove = DateTime.now().UnixTimestampMillis,
             Count = 0
         },
@@ -34,7 +34,8 @@ function RateLimiter.ClientCheck(PlayerName: string, TypeToCheck: string)
     return Count > TypeTable.Limit -1 and LastCheck < 1000
 end
 function RateLimiter.ServerCheck(player: Player, TypeToCheck: string)
-    local RateProfile =  RateLimiter[player.Name] 
+    local UID = player:GetAttribute("UID")
+    local RateProfile =  RateLimiter[UID] 
     local TypeTable = RateProfile[TypeToCheck] 
     local Count =  TypeTable.Count
     local LastTime = TypeTable.LastMove
