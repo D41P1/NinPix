@@ -92,8 +92,6 @@ PantsFrame.R.MouseButton1Click:Connect(function()
     local Count = Customise_Handler.Pants(true)
     PantsFrame.CountLabel.Text = Count
 end)
-
-
 --* ColorPick Frame stuff here
 local ColorPickFrame = MainFrame.ColorPick
 local CurrentLabel = ColorPickFrame.CurrentLabel
@@ -156,7 +154,6 @@ for _, Frame in ColorPickFrame:GetDescendants() do
         end)
     end
 end
-
 --* RotateFrame stuff
 local RotateFrame = MainFrame.RotateFrame
 local LeftRot = RotateFrame.L1
@@ -199,8 +196,6 @@ do
     end)
     
 end
-
-
 --* Finish Button and Saving stuff
 local FinishButt = CustomiseFrame.FinishButt
 FinishButt.MouseButton1Click:Connect(function(...: any)  
@@ -208,8 +203,6 @@ FinishButt.MouseButton1Click:Connect(function(...: any)
     local AvatarBuffer, AvatarRGBBuffer =  Data_Handler.Write_Avatar_Data_Func(ItemNumbers, ColorOfItems)
     AvatarDataEvent:FireServer(AvatarBuffer, AvatarRGBBuffer)
 end)
-
-
 --* Loading the Data
 local CustomiseButtRBXSC
 AvatarDataEvent.OnClientEvent:Connect(function(AvatarBuffer:buffer, AvatarRGBBuffer:buffer)  
@@ -223,7 +216,8 @@ AvatarDataEvent.OnClientEvent:Connect(function(AvatarBuffer:buffer, AvatarRGBBuf
     }
     Data = Data_Handler.Read_Avatar_Data_Func(Data, AvatarBuffer, AvatarRGBBuffer)
     Customise_Handler.init(Data, Character)    
-    
+    Customise_Handler.InitAvatar(Data)
+
     ColorPickFrame.RLabel.Text = Data.Hair.R
     ColorPickFrame.GLabel.Text = Data.Hair.G
     ColorPickFrame.BLabel.Text = Data.Hair.B
@@ -239,7 +233,6 @@ AvatarDataEvent.OnClientEvent:Connect(function(AvatarBuffer:buffer, AvatarRGBBuf
         MainGui.Enabled = false
         CustomiseGui.Enabled = true
     end)    
-
 end)
 
 local Background_Theme = SoundService.Background_Theme_NinPix:Clone()

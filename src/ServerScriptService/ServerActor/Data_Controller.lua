@@ -23,40 +23,68 @@ local Hair = ReplicatedStorage.Hairs
 local Shirts  = ReplicatedStorage.Shirts
 local Pants = ReplicatedStorage.Pants
 
-local Data_Manager = {}
-type DataBuffer = {
+local Data_Controller = {}
+export type DataBuffer = {
     AvatarBuffer:buffer,
     AvatarRGBBuffer:buffer,
+    ActiveSlot_Num_Buffer:buffer,
     [string]: buffer
 }
 type DataProfiles = {
     [string] :DataBuffer
 }
 do 
-    local AvatarDS 
-    local Profiles:DataProfiles = {}
-    local Save_allPlayers_Avatar = function ()
-        for PlayerName, Player_Profile in Profiles do
-            RunService.Heartbeat:Wait() 
+    local Slots = {}
+    local Profiles:{ [string]: DataBuffer } = {}
+    local GlobalActiveSlotDS:DataStore
+    local Save_allPlayers_Data = function ()
+        for PlayerName, Player_Profile:DataBuffer in Profiles do
+            task.wait(1)
             pcall(function()
-                AvatarDS:SetAsync(PlayerName.."Avatar", Player_Profile.AvatarBuffer)
+                task.synchronize()
+                local SlotNum = Player_Profile.ActiveSlot_Num
+                local PlayerSlotDS:DataStore = Slots[SlotNum]
+                PlayerSlotDS:SetAsync(PlayerName.."Avatar", Player_Profile.AvatarBuffer)
                 RunService.Heartbeat:Wait()
-                AvatarDS:SetAsync(PlayerName.."AvatarRGB", Player_Profile.AvatarRGBBuffer)
+                PlayerSlotDS:SetAsync(PlayerName.."AvatarRGB", Player_Profile.AvatarRGBBuffer)
+                GlobalActiveSlotDS:SetAsync(PlayerName, Player_Profile.ActiveSlot_Num_Buffer)
             end)
-            RunService.Heartbeat:Wait() 
         end
     end
-    local GetPlayerAvatarData = function(player:Player): DataBuffer
-        local DataBuffer
+    local Get_ActiveSlot = function(player:Player): buffer
+        local PlayerName = player.Name
+        local Player_ActiveSlot_Buffer
         local Success, Error = pcall(function()  
-            local AvatarBuffer:buffer? =  AvatarDS:GetAsync(player.Name.."Avatar")
+            Player_ActiveSlot_Buffer = GlobalActiveSlotDS:GetAsync(PlayerName)
+        end)
+        if not Success then
+            warn(Error); player:Kick(Error)
+            return Player_ActiveSlot_Buffer
+        end
+        if not Player_ActiveSlot_Buffer then 
+            Player_ActiveSlot_Buffer = buffer.create(1)
+            buffer.writeu8(Player_ActiveSlot_Buffer, 0, 1)
+        end
+        return Player_ActiveSlot_Buffer
+    end
+    local Get_SlotDS = function(ActiveSlotNumber:number)
+        if Slots[ActiveSlotNumber]  then  return Slots[ActiveSlotNumber] end
+        Slots[ActiveSlotNumber] = DataStoreService:GetDataStore("ActiveSlot", "Slot"..ActiveSlotNumber)
+        return Slots[ActiveSlotNumber]
+    end
+    local Get_Player_Avatar_Data = function(player:Player, ActiveSlot_Num)
+        local PlayerActiveSlotDS = Slots[ActiveSlot_Num]
+        if not PlayerActiveSlotDS then warn("Wrong Number: ", ActiveSlot_Num, typeof(ActiveSlot_Num), Slots); return end
+        local Avatar_Buffer:buffer, AvatarRGB_Buffer:buffer
+        local Success, Error = pcall(function()  
+            local AvatarBuffer:buffer? =  PlayerActiveSlotDS:GetAsync(player.Name.."Avatar")
             if not AvatarBuffer then 
                 --* first time joining default data 
                 local NewAvatarBuffer = buffer.create(10)
                 local offset = 0
                 for i = 1, 4 do 
-                    offset += 2
                     buffer.writeu16(NewAvatarBuffer, offset, 1)
+                    offset += 2
                 end
                 buffer.writeu16(NewAvatarBuffer, 8, 4)
                 local NewAvatarRGBBuffer = buffer.create(18)
@@ -67,30 +95,24 @@ do
                 buffer.writeu8(NewAvatarRGBBuffer, 15, 200)
                 buffer.writeu8(NewAvatarRGBBuffer, 16, 200)
                 buffer.writeu8(NewAvatarRGBBuffer, 17, 0)    
-
-                local Player_Profile:DataBuffer  = {
-                    ["AvatarBuffer"] = NewAvatarBuffer,
-                    ["AvatarRGBBuffer"] = NewAvatarRGBBuffer
-                }
-                Profiles[player.Name] = Player_Profile
-                DataBuffer = Player_Profile
-                return
+                Avatar_Buffer = NewAvatarBuffer
+                AvatarRGB_Buffer = NewAvatarRGBBuffer
+                return 
             end
-            local AvatarRGBBuffer:buffer? = AvatarDS:GetAsync(player.Name.."AvatarRGB")
-            local Player_Profile:DataBuffer  = {
-                ["AvatarBuffer"] = AvatarBuffer,
-                ["AvatarRGBBuffer"] = AvatarRGBBuffer
-            }  
-            local PlayerName = player.Name
-            Profiles[PlayerName] = Player_Profile
-            DataBuffer= Player_Profile 
-            return
+            local AvatarRGBBuffer:buffer? = PlayerActiveSlotDS:GetAsync(player.Name.."AvatarRGB")
+            Avatar_Buffer = AvatarBuffer
+            if AvatarRGBBuffer then  AvatarRGB_Buffer = AvatarRGBBuffer end
         end)
         if not Success then  
             warn(Error);  player:Kick(Error)
         end
-        return DataBuffer
+        return Avatar_Buffer, AvatarRGB_Buffer
     end 
+    local Add_To_Profiles = function(player:Player, Data: DataBuffer)
+        local PlayerName = player.Name
+        Profiles[PlayerName] = Data     
+    end
+    --*update Avatar Data
     local ChangePlayerAvatarData = function(player:Player, AvatarBuffer: buffer, AvatarRGBBuffer: buffer)
         local BanFunc = PlayerBan_Manager.Ban
         if typeof(AvatarBuffer) ~=  "buffer" then print("1");  BanFunc(player, 28, 1); return end
@@ -111,16 +133,16 @@ do
         
         local PantsCount =buffer.readu16(AvatarBuffer, 8) 
         if PantsCount > #Pants:GetChildren() or PantsCount <= 0 then print("9"); BanFunc(player, 28, 1); return end
-        Profiles[player.Name] = {
-            ["AvatarBuffer"]  =  AvatarBuffer,
-            ["AvatarRGBBuffer"] = AvatarRGBBuffer
-        }
+        local profile = Profiles[player.Name]
+        if not profile then warn("no profile did not save"); return end
+        profile.AvatarBuffer = AvatarBuffer
+        profile.AvatarRGBBuffer = AvatarRGBBuffer
     end
-    
+
     local Init = function()
         local Success, Error = pcall(function()  
-            AvatarDS = DataStoreService:GetDataStore("AvatarDS")
-            AvatarDS:GetAsync("TEST")
+            GlobalActiveSlotDS = DataStoreService:GetDataStore("ActiveSlot")
+            GlobalActiveSlotDS:GetAsync("TEST")
         end)
         if not Success then 
             warn("[DataStore Error]: Roblox DataStore Maybe down:  \n|\n", Error)
@@ -134,30 +156,36 @@ do
             print("Data Store is working no Errors ")
         end
     end
+    local Player_Left_Queue = {}
     do 
         local D, S = 0, 120 -- 0, 120 in PROD
-        RunService.Heartbeat:Connect(function(a0: number)  
+        RunService.Heartbeat:ConnectParallel(function(a0: number)  
             D += a0
             if D >= S then 
                 D -= S
                 print("Saving Players Data")
-                Save_allPlayers_Avatar()
+                Save_allPlayers_Data()
+                local PlayerLeft_Clone = table.clone(Player_Left_Queue)
+                for i, PlayerNames in PlayerLeft_Clone do 
+                    Profiles[PlayerNames] = nil
+                    table.remove(Player_Left_Queue, i)
+                end
             end
         end)
     end
     local Cleanup = function(PlayerName:string)
-        Profiles[PlayerName] = nil
+        table.insert(Player_Left_Queue, PlayerName)
     end
-
     --* add the functions to the Module
-    Data_Manager["init"] = Init
-    Data_Manager["GetPlayerAvatarData"] = GetPlayerAvatarData
-    Data_Manager["ChangePlayerAvatarData"] = ChangePlayerAvatarData
-    Data_Manager["Save_allPlayers_Avatar"]= Save_allPlayers_Avatar
-    Data_Manager["Cleanup"] = Cleanup
+    Data_Controller["init"] = Init
+    Data_Controller["GetPlayerAvatarData"] = Get_Player_Avatar_Data
+    Data_Controller["ChangePlayerAvatarData"] = ChangePlayerAvatarData
+    Data_Controller["Save_allPlayers_Data"]= Save_allPlayers_Data
+    Data_Controller["Cleanup"] = Cleanup
+    Data_Controller["Add_To_Profiles"] = Add_To_Profiles
+    Data_Controller["Get_ActiveSlot"] = Get_ActiveSlot
+    Data_Controller["Get_SlotDS"] = Get_SlotDS
 end
-
-
 --[[Data Store Plan
 Slots Data Store {
     --* for the main menu
@@ -189,4 +217,4 @@ Inventory Data Store {
 ]]
 
 
-return Data_Manager
+return Data_Controller

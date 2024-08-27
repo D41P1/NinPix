@@ -71,11 +71,11 @@ local Read_Avatar_Data_Func = function (Data: SharedExports.PlayerInfo, AvatarBu
     local Readu16 = buffer.readu16
     
     Data.Hair.Count = Readu16(AvatarBuffer, 0)
+    
     Data.Shirt.Count = Readu16(AvatarBuffer, 2)
     Data.Pants.Count = Readu16(AvatarBuffer, 4)
     Data.Eyes.Count = Readu16(AvatarBuffer, 6)
     Data.Mouth.Count = Readu16(AvatarBuffer, 8)
-
     Data.Hair.R, Data.Hair.G, Data.Hair.B = Readu8(AvatarRGBBuffer, 0), Readu8(AvatarRGBBuffer, 1), Readu8(AvatarRGBBuffer, 2)
     Data.Shirt.R, Data.Shirt.G, Data.Shirt.B = Readu8(AvatarRGBBuffer, 3), Readu8(AvatarRGBBuffer, 4), Readu8(AvatarRGBBuffer, 5)
     Data.Pants.R, Data.Pants.G, Data.Pants.B = Readu8(AvatarRGBBuffer, 6), Readu8(AvatarRGBBuffer, 7), Readu8(AvatarRGBBuffer, 8)

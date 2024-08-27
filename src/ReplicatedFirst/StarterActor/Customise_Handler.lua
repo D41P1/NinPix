@@ -38,9 +38,7 @@ local init = function(Data, Character: typeof(Char))
     local LLLWeld = Char.LeftLowerLeg.CWeld
     local LULWeld = Char.LeftUpperLeg.CWeld
     local HeadWeld = Char.Head.CWeld
-        
     
-    local RadM = math.rad
     local HandleHair = function(HairNumber:number)
         local CF = HairCFs[HairNumber]
         HeadWeld.C1 = CF
@@ -67,7 +65,6 @@ local init = function(Data, Character: typeof(Char))
         LULWeld.C1 =LUL_CF
         RULWeld.C1 =RUL_CF
     end
-
     --* eyes stuff
     local TotalEyes = #Eyes:GetChildren()
     local function MakeEyes(M)
@@ -440,6 +437,7 @@ local init = function(Data, Character: typeof(Char))
         Color_Of_The_Items["Skin"].R = SkinR
         Color_Of_The_Items["Skin"].G = SkinG
         Color_Of_The_Items["Skin"].B = SkinB
+        print("init")
     end
     --* putting the functions into the Module 
     Customise_Handler["InitAvatar"] = InitAvatar
