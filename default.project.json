@@ -8,7 +8,6 @@
         "$path": "src/ReplicatedStorage"
       }
     },
-
     "ServerScriptService": {
       "Server": {
         "$path": "src/ServerScriptService"
@@ -17,6 +16,7 @@
     
     "StarterPlayer": {
       "StarterPlayerScripts": {
+        "$path": "src/StarterPlayerScripts"  
       }
     },
     "ReplicatedFirst" : {

@@ -17,17 +17,17 @@ type ActorTable = {
 local Actors = {}
 local LoopQ = {}
 Actor:BindToMessageParallel("Init", function()
-    local D, S = 0, 3
+    local D, S = 0, 1
     task.synchronize()
     RunService.Heartbeat:ConnectParallel(function(a0: number)  
         D += a0
         if D >= S then
             D -= S
-            for _, HealthActors:Actor in RunTimeFolder:GetChildren() do 
-                local UID = HealthActors.Name
+            for _, PostureActors:Actor in RunTimeFolder:GetChildren() do 
+                local UID = PostureActors.Name
                 local Prof: ActorTable = Actors[UID]
                 if not Prof then warn("no Prof: ", UID); return end
-                HealthActors:SendMessage("Send", Prof.Posture) --Send this
+                PostureActors:SendMessage("Send", Prof.Posture) --Send this
             end 
             local SendBuffer = buffer.create(0)
             local Len = buffer.len
@@ -50,6 +50,7 @@ Actor:BindToMessageParallel("Init", function()
     end)        
 end)
 Actor:BindToMessageParallel("NewPosture", function(UID:string, b:buffer, Posture: number) -- they reply with this
+    UID = tostring(UID)
     local Prof:ActorTable = Actors[UID]
     if not Prof then warn("incorrect UID For Posture: ", UID); return end 
     Prof.Posture = Posture
@@ -74,6 +75,7 @@ Actor:BindToMessage("Create", function(UID:string, Posture: number)
     local b = buffer.create(2)
     buffer.writeu16(b, 0, Posture)
     task.delay(1, function()
+        if not CharPostureActor then return end
         CharPostureActor:SendMessage("Init", UID, Posture)
         task.wait(1)
         CharPostureActor:SendMessage("StartRegen", UID, Posture)
@@ -81,11 +83,19 @@ Actor:BindToMessage("Create", function(UID:string, Posture: number)
     PostureEvent:FireAllClients(b)
 end)
 Actor:BindToMessageParallel("SendMessage", function(Topic, UID:string, ...)  
+    UID = tostring(UID)
     local Prof:ActorTable = Actors[UID]
     if not Prof then warn("No Prof For: ", UID); return end
     Prof.Actor:SendMessage(Topic, ...)
 end)
+Actor:BindToMessageParallel("RespawnPlayer", function(UID:string)  
+    UID = tostring(UID)
+    local Prof:ActorTable = Actors[UID]
+    if not Prof then warn("No Prof For: ", UID, typeof(UID)); return end
+    Prof.Actor:SendMessage("ResetPosture")
+end)
 Actor:BindToMessageParallel("Cleanup", function(UID:string)  
+    UID = tostring(UID)
     local Prof:ActorTable = Actors[UID]
     if not Prof then warn("No Prof For: ", UID); return end
     Actors[UID] = nil

@@ -15,25 +15,30 @@ export type ItemDataMod = {
     Damage: number,
     [string]: any
 }
-Actor:BindToMessageParallel("Init", function(UID:string, MaxPosture:number)  
+Actor:BindToMessageParallel("Init", function(UID, MaxPosture:number)  
+    UID = tonumber(UID)
     local Posture: number  = MaxPosture
     local WriteU16 = buffer.writeu16
-    local Writestring = buffer.writestring
+    local writeu8 = buffer.writeu8
     local Regen: RBXScriptConnection?
-    local A:any = Actor:BindToMessageParallel("Send", function(OldHealth:number)   
-        if OldHealth == Posture then return end
+    local A:any = Actor:BindToMessageParallel("Send", function(OldPosture:number)   
+        if OldPosture == Posture then return end
         local b = buffer.create(3)
-        Writestring(b, 0, UID, 1)
+        writeu8(b, 0, UID)
         WriteU16(b, 1, Posture)
-        MessageAPI.SendToHealth("NewHealth", UID, b, Posture)
+        MessageAPI.SendToPosture("NewPosture", tostring(UID), b, Posture)
     end)
-    local B:any = Actor:BindToMessageParallel("TakeDamage", function(ItemName: string, AttackerUID:string)
-        local Info = ItemDataMod.GiveCopyData(ItemName)
+    local B:any = Actor:BindToMessageParallel("TakeDamage", function(ItemName: string, AttackerUID:string, Frame, ParryBool:boolean?)
+        local Info:ItemDataMod.ItemData = ItemDataMod.GiveCopyData(ItemName)
         if not Info then warn("no Info: ", Info, UID, AttackerUID); return end
-        Posture -= Info.Damage        
+        local DeductPosture = Info.Posture
+        if ParryBool then 
+            DeductPosture *= 0.3
+        end
+        Posture -= DeductPosture
         if Posture <= 0 then 
             Posture = 0
-            MessageAPI.SendToSSS("TriggerAction", UID, "GuardBroken", AttackerUID, ItemName)             
+            MessageAPI.SendToSSS("TriggerAction", UID, "GuardBroken", AttackerUID, ItemName, Frame)             
         end
     end)
     local C:any = Actor:BindToMessageParallel("StartRegen", function()
@@ -45,12 +50,16 @@ Actor:BindToMessageParallel("Init", function(UID:string, MaxPosture:number)
             if D >= S then 
                 D -= S
                 if Posture >= MaxPosture then Posture = MaxPosture; return  end
-                Posture += MaxPosture/120
+                Posture += MaxPosture/90
             end 
         end)
+    end) 
+    local D:any = Actor:BindToMessageParallel("ResetHealth", function()
+        Posture = 100
     end) 
     table.insert(Connections, A)
     table.insert(Connections, B)
     table.insert(Connections, C)
+    table.insert(Connections, D)
 end)
 

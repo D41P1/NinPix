@@ -22,12 +22,13 @@ type StateMachine = {
     ["StateMachine"]: any
 } 
 local HumanoidMachine = {}
-function HumanoidMachine:InitHumanoid(Character, StateMachine)
+function HumanoidMachine:InitHumanoid(Character: typeof(workspace.PixelDummy), StateMachine)
     local Humanoid = { 
         ["CurrentState"] = "Idle",
         ["OldState"] = "Idle",
         ["MoveKeys"] = "",
         ["Animator"] = Character.AC.Animator,
+        ["Motors"] = Character.Rag:GetChildren(),
         ["StateMachine"] = StateMachine
         -- ["IsLocked"] = false
     }
@@ -51,14 +52,14 @@ function HumanoidMachine.TriggerAction(Character: Model, Event: UnreliableRemote
 end
 function HumanoidMachine.ServerTriggerAction(UID: string, Event: RemoteEvent?,  Action: string, ...)
     local Humanoid: StateMachine = HumanoidMachine[UID]
-    if not Humanoid then warn("No StateMachine", Humanoid) end
+    if not Humanoid then warn("No StateMachine", Humanoid); return end
     local HumanoidStates = Humanoid.StateMachine
     if not HumanoidStates[Humanoid.CurrentState][Action] then  return end    
     HumanoidStates[Humanoid.CurrentState][Action](HumanoidMachine, UID, Event, ...)
 end
 function  HumanoidMachine.ChangeState(UID: string, NewState: string, OldState: string?)
     local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[UID]
-    if not Humanoid then warn("No StateMachine", Humanoid) end
+    if not Humanoid then warn("No StateMachine", Humanoid); return end
     local HumanoidStates = Humanoid.StateMachine
     if Humanoid.IsLocked then return end
     if not HumanoidStates[NewState] then return end
@@ -67,17 +68,21 @@ function  HumanoidMachine.ChangeState(UID: string, NewState: string, OldState: s
 end
 function  HumanoidMachine.ForceState(UID: string, NewState: string, OldState: string?)
     local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[UID]
-    if not Humanoid then warn("No StateMachine", Humanoid) end
-    local HumanoidStates:{ [string]: (any) -> any } = Humanoid.StateMachine
+    if not Humanoid then warn("No StateMachine", Humanoid); return end
+    local HumanoidStates= Humanoid.StateMachine
     if not HumanoidStates[NewState] then return end
     if OldState then  HumanoidMachine[UID].OldState = OldState end
     HumanoidMachine[UID].CurrentState = NewState
 end
 function HumanoidMachine.ChangeHumanoidProperty(UID:string, Property:string, Value:any)
     local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[UID]
-    if not Humanoid then warn("No StateMachine", Humanoid) end
+    if not Humanoid then warn("No StateMachine", Humanoid); return end
     if not Humanoid[Property] then warn("incorrect Property: ", Property); return end
     Humanoid[Property] = Value
 end
-function  HumanoidMachine.ChangeToOldState(UID: string) HumanoidMachine[UID].CurrentState = HumanoidMachine[UID].OldState end
+function  HumanoidMachine.ChangeToOldState(UID: string)
+    local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[UID]
+    if not Humanoid then warn("No StateMachine", Humanoid); return end
+    Humanoid.CurrentState = HumanoidMachine[UID].OldState     
+end
 return HumanoidMachine

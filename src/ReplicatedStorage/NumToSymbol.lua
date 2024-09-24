@@ -8,9 +8,16 @@ local NumToSymbol = {
     [7] = "Seven",
     [8] = "Eight",
 }
+
 local SymbolToNum = {}
 for Num ,  Key in NumToSymbol do
     SymbolToNum[Key] = Num
 end
-function NumToSymbol.GiveNum(Key:string) return SymbolToNum[Key] end
+function NumToSymbol.GiveNum(Key:string):number 
+    return SymbolToNum[Key]
+end
+function NumToSymbol.GiveString(Key:number):string 
+    return NumToSymbol[Key] 
+end
+
 return NumToSymbol

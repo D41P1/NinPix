@@ -9,6 +9,7 @@ export type HumanoidModel = {
     Clone: (self: any) -> HumanoidModel,
     SetAttribute: (self: any, ValueName: string, any) -> nil 
 }
+
 export type ServerStorage = {
     Hitbox: {
         Humanoid: HumanoidModel

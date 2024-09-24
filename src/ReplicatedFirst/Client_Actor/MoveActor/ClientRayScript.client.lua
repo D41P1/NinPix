@@ -52,7 +52,7 @@ end
 
 local Connections = {}
 Actor:BindToMessageParallel("Init", function(UID: string)  
-    Character = CollectionService:GetTagged(UID)[1]
+    Character = CollectionService:GetTagged("Char"..UID)[1]
     local Hip = Character:GetAttribute("Hip")
     local WS = Character:GetAttribute("BaseWalkSpeed")
     local OldWalkSpeed = WS
@@ -89,7 +89,7 @@ Actor:BindToMessageParallel("Init", function(UID: string)
         local Origin: Vector3 = Body.Position
         local EndCF  = Body.CFrame * CFrame.new(0, -1, 0)
         local End: Vector3 = EndCF.Position        
-        local RR: RaycastResult =  HitBox:Raycasting(Origin, End, 2.75)
+        local RR: RaycastResult =  HitBox:Raycasting(Origin, End, Hip*1.2)
         if RR then
             local RRHitHip = RR.Position.Y + Hip
             local BodyY = Origin.Y + 0.1
@@ -127,11 +127,11 @@ Actor:BindToMessageParallel("Init", function(UID: string)
             d = deltanew 
         end)    
     end)
-    local JWM:any = Actor:BindToMessageParallel("JumpWithMovement", function(RelativeDirCF: CFrame) -- for other characters 
+    local JWM:any = Actor:BindToMessageParallel("JumpWithMovement", function(RelativeDirCF: CFrame)  
         local Start = Body.Position 
         local Direction = RelativeDirCF.LookVector
         local End  = Start + (Direction *15)
-        local Amount = 30
+        local Amount = 35
         local P1 = Start:Lerp(End, 0.5) + Vector3.new(0, Amount, 0)
         local CurvePoints = RayMovement.CurveCalculate(Start, End, Amount, P1)
         local Conn: RBXScriptConnection , d, s = nil, 0, 0.1
@@ -210,6 +210,7 @@ Actor:BindToMessageParallel("Init", function(UID: string)
     local LM:any = Actor:BindToMessageParallel("LockMove", function(Bool:boolean?) -- for other characters 
         LockMovement = Bool
     end)
+    
     table.insert(Connections, SF)
     table.insert(Connections, SFR)
     table.insert(Connections, SD)

@@ -6,7 +6,7 @@ local SharedType = require(Shared.SharedType)
 local Attribute_Handler = {
     ["Humanoid"] = {
         BodyType = "Humanoid",
-        Hip  = 2.7
+        Hip  = 5
     }
 }
 
@@ -15,25 +15,12 @@ function Attribute_Handler:SetTheAttributes(Character: Model, BodyType: string, 
     for AttributeName, AttributeValue in Attribute_Handler[BodyType] do Character:SetAttribute(AttributeName, AttributeValue) end    
 end 
 
-function Attribute_Handler:SetStats(Character: Model, StatBuffer:buffer)
-    local Stats = {
-        [1] = "Health",
-        [2] = "Posture"
-        -- Strength
-        -- Stamina
-        -- Defence
-        -- Speed
-    }
-    local Readu16 = buffer.readu16
-    local offset = 0
-    for _, StatNames in Stats do 
-        Character:SetAttribute(StatNames, Readu16(StatBuffer, offset))
-        offset += 2
-    end
-    Character:SetAttribute("MaxHealth", Readu16(StatBuffer, 0))
-    Character:SetAttribute("MaxPosture", Readu16(StatBuffer, 2))
+function Attribute_Handler:SetStats(Character: Model)
+    Character:SetAttribute("MaxHealth", 100)
+    Character:SetAttribute("MaxPosture", 200)
+    Character:SetAttribute("Health", 100)
+    Character:SetAttribute("Posture", 200)
 end 
-
 function Attribute_Handler.SetNPCStats(Character:Model, NPCData:SharedType.NPCData)
     local T = {
         "Health",

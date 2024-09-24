@@ -1,6 +1,8 @@
-local Shared = script.Parent.Parent
-local ReplicatedStorage = Shared.Parent
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Shared = ReplicatedStorage.Shared
 local Items = ReplicatedStorage.Items
+
+local Particle_Handler = require(script.Parent.Parent.SkillsFolder.Particle_Handler)
 local ItemDataMod = require(Shared.ItemDataMod)
 local AnimHandler = require(Shared.AnimHandler)
 local SharedTypes = require(Shared.SharedType)
@@ -22,7 +24,7 @@ local M1 = {
         StateMachine.CurrentAction = ATrack
         ATrack:Play()
         local Profile: SharedTypes.Profile = Data.Profile
-        local Info: ItemDataMod.ItemDataMod = ItemDataMod.GiveCopyData(Data.ItemName)
+        local Info: ItemDataMod.ItemData = ItemDataMod.GiveCopyData(Data.ItemName)
         local Body = Character.PrimaryPart
         Info["SkillName"] = "SwordM1"       
         Info["WeaponName"] = StateMachine.CurrentItem       
@@ -30,12 +32,12 @@ local M1 = {
         Info["Origin"] = Body.CFrame
         Info["AUID"] = Character.Name
         Profile.Forward:SendMessage("LockMove", true) 
-        local Count = 0
+        local AttackSpeed = 1/(Info.HBTime/1000)
+        ATrack:AdjustSpeed(AttackSpeed)
         ATrack.KeyframeReached:ConnectParallel(function(a0: string)  
-            Profile.Detect:SendMessage("GPB", Info)
-            Count += 1
             ClientCombatMachine.TriggerAction(Character, nil, "Release")
-            Profile.Forward:SendMessage("LockMove") 
+            Profile.Forward:SendMessage("LockMove")
+            Particle_Handler.Swing(Character, Info.Type) 
         end)
         return ATrack
     end

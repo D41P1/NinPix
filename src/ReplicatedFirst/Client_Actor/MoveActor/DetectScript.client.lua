@@ -5,10 +5,10 @@ local CollectionService = game:GetService("CollectionService")
 
 local Shared = ReplicatedStorage.Shared
 local HB = require(Shared.Hitbox)
+if not script.Parent then script:Destroy(); return end
 local ClientActor = script.Parent.Parent -- for the downwards actor
 local ClientMessageAPI = require(ClientActor.ClientMessageAPI)
 local Movement_handler = require(ClientActor.Movement_handler)
-local Encyclopedia = require(Shared.Encyclopedia)
 -- local RunService = game:GetService("RunService")
 local Actor = script.Parent
 

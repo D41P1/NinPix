@@ -21,14 +21,15 @@ local SharedTypes = require(game:GetService("ReplicatedStorage").Shared.SharedTy
 export type ClientStateMachine = SharedTypes.ClientStateMachine
 
 local ClientCombatMachine = {}
-function ClientCombatMachine:InitMachine(Character, StateModule, HotBarInfo: buffer?)
+function ClientCombatMachine:InitMachine(Character, StateModule, Inventory_Toolbar)
     local UnixMill = DateTime.now().UnixTimestampMillis
     local StateMachine:ClientStateMachine = { 
         ["CurrentState"] = "Idle",
         ["OldState"] = "Idle",
         ["StateModule"] = StateModule,
-        ["ActiveHotbar"] = "Hotbar1",
+        ["ActiveToolbar"] = "Toolbar1",
         ["M1Count"] = 0,
+        ["M1ResetTime"] = UnixMill,
         ["M1String"] = {},
         ["Anims"] = {},
         ["CDs"] = {
@@ -38,25 +39,27 @@ function ClientCombatMachine:InitMachine(Character, StateModule, HotBarInfo: buf
         -- ["IsLocked"] = false
     }
     ClientCombatMachine[Character.Name] = StateMachine
-    if HotBarInfo then 
-        local ReadU16 = buffer.readu16
-        local offset = 1
-        local Keys = { "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight" }
-        StateMachine.Hotbar1 = {}
-        StateMachine.Hotbar2 = {}
-        if not StateMachine.Hotbar1  then return end
-        if not StateMachine.Hotbar2  then return end --* for Typechecker
-        for _, Key in Keys do
-            local NumberReference = ReadU16(HotBarInfo, offset)
-            StateMachine.Hotbar1[Key] = NumberReference -- could be Item/Skill
-            offset += 2
+    print("inited ClientCombat machine: ", Character.Name, ClientCombatMachine)
+    local ReadU16 = buffer.readu16
+    local Keys = { "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight" }
+    local offset = 1 --* 0 is UID
+    StateMachine.Toolbar1 = {}
+    StateMachine.Toolbar2 = {}
+    for _, Key in Keys do
+        local NumberReference = ReadU16(Inventory_Toolbar, offset) 
+        if StateMachine.Toolbar1  then 
+            StateMachine.Toolbar1[Key] = NumberReference -- could be Item/Skill
         end
-        for _, Key in Keys do
-            local NumberReference = ReadU16(HotBarInfo, offset)
-            StateMachine.Hotbar2[Key] = NumberReference
-            offset += 2
-        end
+        offset += 2
     end
+    for _, Key in Keys do
+        local NumberReference = ReadU16(Inventory_Toolbar, offset)
+        if StateMachine.Toolbar2 then 
+            StateMachine.Toolbar2[Key] = NumberReference -- could be Item/Skill
+        end
+        offset += 2
+    end
+
     return StateMachine
 end 
 function ClientCombatMachine:InitMPCMachine(Character, StateModule)
@@ -65,8 +68,9 @@ function ClientCombatMachine:InitMPCMachine(Character, StateModule)
         ["CurrentState"] = "Idle",
         ["OldState"] = "Idle",
         ["StateModule"] = StateModule,
-        ["ActiveHotbar"] = "Hotbar1",
+        ["ActiveToolbar"] = "Toolbar1",
         ["M1Count"] = 0,
+        ["M1ResetTime"] = UnixMill,
         ["M1String"] = {},
         ["Anims"] = {},
         ["CDs"] = {
@@ -78,12 +82,11 @@ function ClientCombatMachine:InitMPCMachine(Character, StateModule)
     ClientCombatMachine[Character.Name] = StateMachine
     return StateMachine
 end 
-
 function ClientCombatMachine.TriggerAction(Character: Model, Event: UnreliableRemoteEvent?,  Action: string, ...)
     local StateMachine: ClientStateMachine = ClientCombatMachine[Character.Name]
     if not StateMachine then warn("no state machine in trigg action"); return end
     local Machine = StateMachine.StateModule
-    if not Machine[StateMachine.CurrentState][Action] then print("no Action in state: ", Action, StateMachine.CurrentState, Machine);  return end    
+    if not Machine[StateMachine.CurrentState][Action] then print("no Action in state: ", Action, StateMachine.CurrentState);  return end    
     Machine[StateMachine.CurrentState][Action](ClientCombatMachine, StateMachine, Character, Event, ...)
 end
 function  ClientCombatMachine.ChangeState(UID: string, NewState: string, OldState: string?)
@@ -109,5 +112,16 @@ function  ClientCombatMachine.ChangeToOldState(UID: string)
     StateMachine.CurrentState = OldState 
     return OldState
 end
+function ClientCombatMachine.Cleanup(UID:string)
+    --* no need to destroy physical item in SM cos Char Handlers clean up does that
+    local StateMachine: ClientStateMachine = ClientCombatMachine[UID]
+    if not StateMachine then warn("no state machine in Cleanup action"); return end
+    local SStun = StateMachine.SStun
+    if SStun then task.cancel(SStun) end
+    local TStun = StateMachine.TStun
+    if TStun then task.cancel(TStun) end
+    ClientCombatMachine[UID] = nil
+end
+
 
 return ClientCombatMachine

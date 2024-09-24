@@ -26,14 +26,19 @@ local Encyclopedia = {
     [18] = "Guard",
     [19] = "Release",
     [20] = "Stun",
+    [21] = "ReleaseLightAttack",
+    [22] = "ReleaseSoftStun",
+    [23] = "ReleaseTrueStun",
+    [24] = "GuardBroken",
+    [25] = "Return", --*Fodder Action used when ChangeToOldState is used
     --! ↑↑↑↑↑ u8
     --! ↓↓↓↓↓ u16
     --* Item Name
     [1000] = "Sword",
-
     --*NPCs
     [3000] = "Dummy",
     [3001] = "HitDummy", 
+    [3002] = "ShadoMercenary"
 }
 local Dictionary = {}
 for num: number, String: string in Encyclopedia do  Dictionary[String] = num end

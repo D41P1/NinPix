@@ -16,10 +16,11 @@ export type ItemDataMod = {
     Damage: number,
     [string]: any
 }
-Actor:BindToMessageParallel("Init", function(UID:string, MaxHealth:number)  
+Actor:BindToMessageParallel("Init", function(UID, MaxHealth:number)  
+    UID = tonumber(UID)
     local Health: number  = MaxHealth
     local WriteU16 = buffer.writeu16
-    local Writestring = buffer.writestring
+    local writeu8 = buffer.writeu8
     local Regen: RBXScriptConnection?
     local CombatCheck: RBXScriptConnection?
     local InCombat:boolean?
@@ -28,15 +29,18 @@ Actor:BindToMessageParallel("Init", function(UID:string, MaxHealth:number)
     local A:any = Actor:BindToMessageParallel("Send", function(OldHealth:number)   
         if OldHealth == Health then return end
         local b = buffer.create(3)
-        Writestring(b, 0, UID, 1)
+        writeu8(b, 0, UID)
         WriteU16(b, 1, Health)
-        MessageAPI.SendToHealth("NewHealth", UID, b, Health)
+        MessageAPI.SendToHealth("NewHealth", tostring(UID), b, Health)
     end)
     local B:any = Actor:BindToMessageParallel("TakeDamage", function(ItemName, AttackerUID: string)
         local Info = ItemDataMod[ItemName]
         if not Info then warn("invalid ItemName: ", ItemName); return end 
         Health -= Info.Damage
-        if Health <= 0 then Health = 0 end
+        if Health <= 0 then 
+            Health = 0
+            MessageAPI.SendToSSS("TriggerAction", UID, "TriggerDead", AttackerUID, ItemName)              
+        end
         CombatTag = DateTime.now().UnixTimestampMillis --* refresh CombatTag
         local TotalDamage= PlayerTags[AttackerUID]
         if not TotalDamage then  PlayerTags[AttackerUID] = Info.Damage;   return  end
@@ -53,15 +57,17 @@ Actor:BindToMessageParallel("Init", function(UID:string, MaxHealth:number)
             if D >= S then 
                 D -= S
                 if Health >= MaxHealth then Health = MaxHealth; return  end
-                Health += MaxHealth/120
-                print("regenerated", Health)
+                Health += MaxHealth/180
+                print("regenerated")
             end 
         end)
     end)
-    local D:any =Actor:BindToMessageParallel("InCombat", function() 
-        if Regen then task.synchronize(); Regen:Disconnect();  Regen = nil; print("Regen disconnect UID: ", UID) end   
+    local D:any =Actor:BindToMessage("InCombat", function() 
         InCombat = true
-        CombatTag = DateTime.now().UnixTimestampMillis  
+        CombatTag = DateTime.now().UnixTimestampMillis
+        if not Regen then return end
+        Regen:Disconnect();
+        return Regen
     end)
     local E:any = Actor:BindToMessageParallel("OutCombat", function() 
         if InCombat then InCombat =nil  end
@@ -87,11 +93,15 @@ Actor:BindToMessageParallel("Init", function(UID:string, MaxHealth:number)
             end    
         end)
     end) 
+    local G:any = Actor:BindToMessageParallel("ResetHealth", function()
+        Health = 100
+    end) 
     table.insert(Connections, A)
     table.insert(Connections, B)
     table.insert(Connections, C)
     table.insert(Connections, D)
     table.insert(Connections, E)
     table.insert(Connections, F)
+    table.insert(Connections, G)
 end)
 

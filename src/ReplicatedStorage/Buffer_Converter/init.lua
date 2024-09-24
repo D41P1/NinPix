@@ -124,6 +124,43 @@ local Read = function(TableOfReferences: { string }, buff: buffer)
 	end
 	return unpack(ReturnValues)
 end
+local CF_Write_Buffer = function(CF:CFrame, offset:number, b:buffer?): buffer
+	local Needle = offset or 0	
+	local Wi16 = buffer.writei16
+	local CF_Buffer = b or buffer.create(8)
+	local Ro = math.round
+	
+	Wi16(CF_Buffer, Needle, Ro(CF.X))
+	Wi16(CF_Buffer, Needle+2, Ro(CF.Y))
+	Wi16(CF_Buffer, Needle+4, Ro(CF.Z))
+	local V = Vector3.new(CF.LookVector.X, 0, CF.LookVector.Z).Unit
+	local Atan2 = math.atan2(V.Z, V.X);  
+	Atan2 = Atan2 * 1000 -- number can be anywhere from 0 - 6.3 radians (360 degrees)
+	--print(CF.LookVector)
+	Wi16(CF_Buffer, Needle+6, Atan2)	
+	--Atan2 = buffer.readu8(CF_Buffer, 6)
+	--print(V.Z, V.X, math.sin(Atan2/1000), math.cos(Atan2/1000) )
+	Needle += 8
+	return CF_Buffer, Needle
+end
+local CF_Read_Buffer = function(CF_Buffer:buffer, offset:number):CFrame
+	local Needle = offset or 0	
+	local Ri16 = buffer.readi16
+	local PosX, PosY, PosZ = Ri16(CF_Buffer, Needle), Ri16(CF_Buffer, Needle+2), Ri16(CF_Buffer, Needle+4)
+	local Atan2 = Ri16(CF_Buffer, Needle+6)
+	Atan2 = Atan2 + 1e-8 -- prevent NAN Values 
+	Atan2 = Atan2/ 1000	
+	local LookX = math.cos(Atan2)
+	local LookZ = math.sin(Atan2)
+	
+	local Pos = Vector3.new(PosX, PosY, PosZ)
+	local LookPos = Vector3.new(LookX, 0, LookZ).Unit --MUST BE UNIT or ERROR
+	--print(LookPos, "\n|\n")
+	--print("\n\n", LookZ, LookX, Atan2)
+	Needle += 8
+	--//return CFrame.new(PosX, PosY, PosZ, LookX, 0, LookZ, 0, 1, 0, LookZ, 0, LookX)
+	return CFrame.lookAlong(Pos, LookPos, Vector3.new(0, 1, 0) )	
+end
 local PosWriter =function(Pos: Vector3, Look:Vector3, Up:Vector3, b ,offset:number )
 	local buf = b or buffer.create(24) 
 	local Needle = offset or 0	
@@ -173,10 +210,11 @@ local PosReader = function(buf, offset)
 
 	return CF
 end
-
 BufferConverter.PosWriter = PosWriter
 BufferConverter.PosReader = PosReader
 BufferConverter.Read = Read
+BufferConverter["CF_Write_Buffer"] = CF_Write_Buffer
+BufferConverter["CF_Read_Buffer"] = CF_Read_Buffer
 
 
 

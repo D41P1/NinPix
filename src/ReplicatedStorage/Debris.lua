@@ -11,7 +11,7 @@ type DestroyTable = {
 
 }
 function Start()
-	local DTime,Step = 0,0.15 -- lower step = more precise, less performant (Vice Versa)
+	local DTime,Step = 0,0.2 + 1e-5 -- lower step = more precise, less performant (Vice Versa)
 	-- Can be performed in parallel which  is why it is better + it checks less
 	--task.synchronize()
 	Conn = RunService.Heartbeat:ConnectParallel(function(delta) -- parallel

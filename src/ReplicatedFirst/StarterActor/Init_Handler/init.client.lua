@@ -1,3 +1,8 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ContentService = game:GetService("ContentProvider")
+ContentService:PreloadAsync(ReplicatedStorage:GetDescendants())
+task.wait()
+local FromServer = ReplicatedStorage:WaitForChild("FromServer")
 local player = game.Players.LocalPlayer
 local Client_Actor 
 function Respawn()
@@ -5,7 +10,7 @@ function Respawn()
     Client_Actor.Client_Handler.Enabled = true
     Client_Actor.Parent = player:WaitForChild("PlayerScripts")    
 end 
-Respawn()
+FromServer.Start.OnClientEvent:Connect(function()   Respawn() end)
 
 --[[
 when player added  {

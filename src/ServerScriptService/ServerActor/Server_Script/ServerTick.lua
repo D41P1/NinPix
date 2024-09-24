@@ -22,7 +22,7 @@ local ServerTick = {
     }
 }
 -- local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Network_Controller = require(script.Parent.Network_Controller)
+-- local Network_Controller = require(script.Parent.Network_Controller)
 local Buffer_Converter = require(ReplicatedStorage.Shared.Buffer_Converter)
 
 --[[ local Shared = ReplicatedStorage.Shared
@@ -33,7 +33,7 @@ local Buffer_Converter = require(ReplicatedStorage.Shared.Buffer_Converter)
 ]]
 export type profile = { CurrentCF: CFrame,  PlayerName: string }
 local PlayerProfiles = {}
-function ServerTick.InitMovementProfile(UID: string, Pos: Vector3)
+function ServerTick.InitMovementProfile(UID: string, Pos: Vector3, Tag:string)
     local CF = CFrame.new(Pos)
     local CFV = Instance.new("CFrameValue")
     local Body = Instance.new("Part")
@@ -41,6 +41,7 @@ function ServerTick.InitMovementProfile(UID: string, Pos: Vector3)
     CFV.Value = CF
     CFV.Name = UID
     CFV:AddTag(UID.."CFV")
+    CFV:AddTag(Tag.."CFV")
     CFV.Parent = RunTimeCFFolder
 
     Body.Name = UID
@@ -50,39 +51,45 @@ function ServerTick.InitMovementProfile(UID: string, Pos: Vector3)
     Body.Transparency = 0 --TODO change to 1
     Body:AddTag(UID.."Body")
     Body.Parent = workspace.CurrentCamera["SBF"]
-    
-    -- TODO Add Part that also cos NPC HitDetection
-    -- *Parent the Part  workspace.CurrentCamera["SBF"]   
 end
 function ServerTick.GiveProfs()
     return PlayerProfiles
 end
+local Count = 0
+local DebrisPartREMOVE_ME = Instance.new("Folder")
+DebrisPartREMOVE_ME.Parent = workspace
+
 local Tick = function()
-    local b = buffer.create(24*30)
-    local StringW = buffer.writestring
+    local InfoBuffer = buffer.create(9*95)
+    local wru8 = buffer.writeu8
     local offset = 0
     local T = RunTimeCFFolder:GetChildren()
+
     for _, Values:CFrameValue in T do
-        local UID = Values.Name
-        StringW(b, offset, UID)
+        local UID = Values.Name; 
+        UID = tonumber(UID)
+        wru8(InfoBuffer, offset, UID)
         offset += 1
         local CF = Values.Value
-        Buffer_Converter.PosWriter(CF.Position, CF.LookVector, CF.UpVector , b, offset)
-        offset += 24
-
-        --TODO ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ REMOVE ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-        task.synchronize()
-        local Part = Instance.new("Part")
-        Part.CFrame = CF
-        Part.Anchored = true
-        Part.CanCollide = false
-        Part.Transparency = 0.6
-        Debris:AddItem(Part, 0.5)
-        Part.Parent = workspace
-        --TODO ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ REMOVE ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+        Buffer_Converter.CF_Write_Buffer(CF, offset, InfoBuffer)
+        offset += 8
+        Count += 1
+        if Count == 30 then 
+            Count = 0
+            --TODO ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ REMOVE ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+            task.synchronize()
+            local Part = Instance.new("Part")
+            Part.CFrame = CF
+            Part.Anchored = true
+            Part.CanCollide = false
+            Part.Transparency = 0.6
+            Debris:AddItem(Part, 0.5)
+            Part.Parent = DebrisPartREMOVE_ME
+            --TODO ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ REMOVE ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+        end
     end
     task.synchronize()
-    NetworkEvent:FireAllClients(b)  
+    NetworkEvent:FireAllClients(InfoBuffer)
 end
 function ServerTick.Add(Action: ServerTypes.ActionTable)
     local NewIndex = ServerTick.Index
@@ -93,8 +100,7 @@ end
 function ServerTick.InitSSS()
     -- local REMOVE = true
     -- if REMOVE then return end
-    
-    local DeltaTotal, Step = 0, 0.2
+    local DeltaTotal, Step = 0, 0.166
     RunService.Heartbeat:ConnectParallel(function(DeltaStep: number)  
         local NewDelta = DeltaTotal -- locals are faster than globals
         NewDelta += DeltaStep

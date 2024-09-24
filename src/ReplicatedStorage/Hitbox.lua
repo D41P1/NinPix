@@ -20,12 +20,33 @@ HBParams.FilterDescendantsInstances = {workspace.Bodies}
 HBParams.FilterType = Enum.RaycastFilterType.Include	
 
 local NPCParams
+local ServerMapParams
+local ServerCameraParams		
 if RunService:IsServer()  then 
 	NPCParams = OverlapParams.new()
 	NPCParams.FilterDescendantsInstances = {workspace.CurrentCamera["SBF"]}
 	NPCParams.FilterType = Enum.RaycastFilterType.Include		
-end
 
+	ServerMapParams = RaycastParams.new()
+	ServerMapParams.FilterDescendantsInstances = {workspace.CurrentCamera["Map"]}
+	ServerMapParams.FilterType = Enum.RaycastFilterType.Include
+			
+	ServerCameraParams = RaycastParams.new()
+	ServerCameraParams.FilterDescendantsInstances = {workspace.CurrentCamera, workspace.Map} --TODO in future only CurrentCam needed
+	ServerCameraParams.FilterType = Enum.RaycastFilterType.Include
+	
+
+	function HB:ServerCameraRaycast(Origin:Vector3,  End:Vector3,   Distance:number) 	
+		task.desynchronize()
+		local Dir = (End - Origin).Unit	
+		return workspace:Raycast(Origin,Dir* Distance, ServerCameraParams)
+	end
+	function HB:ServerMapRaycasting(Origin:Vector3,  End:Vector3,   Distance:number) 	
+		task.desynchronize()
+		local Dir = (End - Origin).Unit	
+		return workspace:Raycast(Origin,Dir* Distance, ServerMapParams)
+	end	
+end
 function HB:BoxBounds(Character:Model, Origin:CFrame, Properties: Properties) task.synchronize()
 	OverParams.FilterType = Enum.RaycastFilterType.Include
 	OverParams.FilterDescendantsInstances = {workspace.Bodies} -- make it only bodies TODO
@@ -44,24 +65,25 @@ function HB:GPB(Origin:CFrame, Properties: Properties, Filter: {Instance}?) task
 	local Results:{Instance} = workspace:GetPartBoundsInBox(SpawnPoint, Size, HBParams)--* uses Diff Params
 	return Results 
 end
-
 function HB:NPCGPB(Origin:CFrame, Properties: Properties, Filter: {Instance}?) task.synchronize()
 	task.desynchronize()
 	local Size:Vector3 = Vector3.new(Properties.Width, Properties.Height, Properties.Range)
 	local SpawnPoint:CFrame = Origin * CFrame.new(0, 0, (-Properties.Range/2) +1)
 	local Results:{Instance} = workspace:GetPartBoundsInBox(SpawnPoint, Size, NPCParams) --* uses Diff Params
+	
 	return Results 
 end
-
-function HB:Raycasting(Origin:Vector3,  End:Vector3,   Distance,  Filter: {Instance}?) task.synchronize()	
-	if Filter then
-		RayParams.FilterDescendantsInstances  = Filter
-		RayParams.FilterType = Enum.RaycastFilterType.Include	
-	end
+function HB:Raycasting(Origin:Vector3,  End:Vector3,   Distance:number) 	
 	task.desynchronize()
 	local Dir = (End - Origin).Unit	
-	return workspace:Raycast(Origin,Dir* Distance,RayParams)
+	return workspace:Raycast(Origin,Dir* Distance, RayParams)
 end
+function HB:BodyRaycasting(Origin:Vector3,  End:Vector3,   Distance:number) 	
+	task.desynchronize()
+	local Dir = (End - Origin).Unit	
+	return workspace:Raycast(Origin,Dir* Distance, HBParams)
+end
+
 function HB:InFrontBlockCasting(Character:Model, Origin:CFrame, Properties: Properties, Filter) task.synchronize()		
 	RayParams.FilterDescendantsInstances  = Filter
 	RayParams.FilterType = Enum.RaycastFilterType.Include
@@ -79,11 +101,11 @@ end
 function HB.BufferTableResults(T: {string}, Additional_Size: number?, UID_SIZE: number)
 	local Add = Additional_Size or 0
 	local b = buffer.create(#T + Add)
-	local Writestring = buffer.writestring
+	local wru8 = buffer.writeu8
 	local offset = Add
 	for _, UID:string in T do 
-		Writestring(b, offset, UID, UID_SIZE)
-		offset += UID_SIZE
+		wru8(b, offset, tonumber(UID) )
+		offset += 1
 	end
 	return b --* leaves Additional_Size at the start (so any additions are meant to be written at the start starting from offset 0)
 end

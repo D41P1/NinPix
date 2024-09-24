@@ -21,10 +21,7 @@ local Shared = ReplicatedStorage.Shared
 -- local Humanoid_Controller = require(script.Parent.Parent.Humanoid_Controller)
 local RateLimiter = require(Shared.RateLimiter)
 -- local Map_Manager = require(Shared.Map_Manager)
-local MessageAPI = require(ServerScript.MessageAPI)
-local ServerRayMovement = require(ServerScript.ServerRayMovement)
--- local HB = require(Shared.Hitbox) 
-local Eventmanager = require(Shared.Event_Manager)
+--
 local BufferConverter = require(Shared.Buffer_Converter)
 local HumanoidMachine = require(Shared.HumanoidMachine)
 
@@ -60,11 +57,6 @@ type snaphots = {
 --     DeltaTotal = NewDeltaT
 -- end)
 
-local DirectionCaller = setmetatable({}, {
-    __call = function(_, UID: string, ValueToChange: string , Value, ...)
-    end
-})
-ServerRayMovement["Caller"] = DirectionCaller
 local CharController: CharController 
 function MovementLogic.Init(Character_Controller: CharController)
     CharController = Character_Controller
@@ -75,13 +67,13 @@ function MovementLogic.Walk(player: Player, CFBuffer: buffer)
     local Sync = task.synchronize
     if typeof(CFBuffer) ~= "buffer" then Sync(); player:Kick("Spoof Buffer move"); return end
     if buffer.len(CFBuffer) > 24 then  Sync(); player:Kick("Spoof buffer move".. buffer.len(CFBuffer) ); return end
-    if RateLimiter.ServerCheck(player, "Move") then return end
-    local CF: CFrame =  BufferConverter.PosReader(CFBuffer)
+    if RateLimiter.ServerCheck(player, "Move") then  warn("6"); return end
+    local CF: CFrame =  BufferConverter.CF_Read_Buffer(CFBuffer)
+    
     local UID = player:GetAttribute("UID")
     local ForwardActor: Actor = CharController["FA"]
     local Down: Actor = CharController["DA"]
     HumanoidMachine.ServerTriggerAction(UID, nil, "StartWalk", CF, ForwardActor, Down)
-    
 end
 function MovementLogic.StopWalk(player: Player)
     if RateLimiter.ServerCheck(player, "StopMove") then return end

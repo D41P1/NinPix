@@ -6,6 +6,7 @@ local Character_Controller = require(ServerScript.Character_Controller)
 local MessageAPI = require(ServerScript.MessageAPI)
 
 local Shared = ReplicatedStorage.Shared
+local Encyclopedia = require(Shared.Encyclopedia)
 local ItemDataMod = require(Shared.ItemDataMod)
 local CTask = require(Shared.CustomTask)
 local SharedTypes = require(Shared.SharedType)
@@ -13,26 +14,35 @@ local HB = require(Shared.Hitbox)
 
 type CombatMachine = SharedTypes.ServerCombatMachine
 type StateMachine = SharedTypes.ClientStateMachine
-local UPDATE_SERVER_COMBATTICK = function(Length:number, UID:string, StateNum:number, ActionNum:number, CurrentFrame:number, TypeMessage:string?) 
-    local Message = TypeMessage  or "UpdateProfile"
+local SendToCombat = MessageAPI.SendToCombat
+local CREATE_PLAYER_STATE = function(Length:number, UID, StateNum:number, ActionNum:number) 
     local StateBuffer = buffer.create(Length)
     local Writeu8 = buffer.writeu8
     local State = StateNum --*Blocking,Idle,WeaponOut , ... etc
     local Action = ActionNum --*Blocked, Parried, Block, M1, ... etc
+    UID = tonumber(UID)
     Writeu8(StateBuffer, 0, Length)
-    buffer.writestring(StateBuffer, 1, UID, 1)
+    Writeu8(StateBuffer, 1, UID)
     Writeu8(StateBuffer, 2, State)
     Writeu8(StateBuffer, 3, Action)
-    Writeu8(StateBuffer, 4, CurrentFrame)
-    MessageAPI.SendToCombat("UpdateProfile", StateBuffer)    
+    return StateBuffer    
 end
-local BufferDir = function(CFV:CFrameValue, b:buffer, offset:number)
+--[[
+local UPDATE_SERVER_COMBATTICK = function(Length:number, UID, StateNum:number, ActionNum:number, CurrentFrame:number, TypeMessage:string?) 
+    local Message = TypeMessage  or "UpdateProfile"
+    local StateBuffer = CREATE_PLAYER_STATE(Length, UID, StateNum, ActionNum)
+    MessageAPI.SendToCombat(Message, StateBuffer)    
+end
+
+]]
+local BufferDir = function(CFV:CFrameValue, DirBuffer:buffer, offset:number)
     local CF = CFV.Value
-    local Dir = CF.LookVector
-    local Writei16 = buffer.writei16
-    Writei16(b, offset, Dir.X)
-    Writei16(b, offset + 2, Dir.Z)
-    return  b, offset + 2
+    local Direction = CF.LookVector
+    Direction = Vector3.new(Direction.X, 0, Direction.Z)
+    Direction = math.atan2(Direction.Z, Direction.X)
+    Direction = Direction*1000
+    buffer.writei16(DirBuffer, offset, Direction)
+    return  DirBuffer, offset + 2
 end
 
 local HitDummyFSM = {
@@ -42,6 +52,8 @@ HitDummyFSM["Idle"] = {
         local WeaponName = NPCData.Weapon
         StateMachine.CurrentItem = WeaponName
         CombatController.ChangeState(UID, "WeaponOut", "WeaponOut")
+        local StateBuffer= CREATE_PLAYER_STATE(5, UID, 1, 1)
+        MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)    
     end,
     ["SoftStun"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
         CombatController.ChangeState(UID, "SoftStun", "Idle")
@@ -63,20 +75,22 @@ HitDummyFSM["LightAttack"] = {
         local CurrentItem = StateMachine.CurrentItem
         local CFV:CFrameValue =  HitDummyFSM["CFV"]
         if not CFV then warn("did not Add CFV from NPCScript"); return end  
-        local ItemData:SharedTypes.ItemDataMod = ItemDataMod.GiveCopyData(CurrentItem)
+        local ItemData:SharedTypes.ItemData = ItemDataMod.GiveCopyData(CurrentItem)
         if not ItemData then warn("no ItemData: ", CurrentItem); return end
         local FA:Actor = Character_Controller["FA"] 
         FA:SendMessage("LockMove", true)
-        local Length = 9
-        local b = buffer.create(Length)
-        local Writeu8 = buffer.writeu8
-        Writeu8(b, 0, Length)
-        buffer.writestring(b, 1, UID, 1)
-        Writeu8(b, 2, 4)--*StateNum
-        Writeu8(b, 3, 13)--*ActionNum
-        local StateBuffer = BufferDir(CFV, b, 5)
-        MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
-
+        local M1Count:number = StateMachine.M1Count
+        local UnixMill = DateTime.now().UnixTimestampMillis
+        M1Count += 1
+        if M1Count >= 4 then  M1Count = 1 end
+        if UnixMill - StateMachine.M1ResetTime > 1000  then --* been longer than a second since the last m1 
+            M1Count = 1
+        end
+        local TypeHit = 0
+        if M1Count == 3 then 
+            TypeHit = 1
+        end
+        StateMachine.M1ResetTime = UnixMill
         --* no  add to Q needed Cos its Entirely server
         StateMachine.CurrentAction = CTask.DelayParallel(ItemData.HBTime/1000, function ()    
             --* Task.delay after Q cos its an NPC
@@ -84,27 +98,33 @@ HitDummyFSM["LightAttack"] = {
             local Results = HB:NPCGPB(CFV.Value, ItemData)
             local UIDsT = {}
             for _, BodyCFPart in Results do  
-                if BodyCFPart.Name == UID then continue end
+                local NumUID = tonumber(BodyCFPart.Name)
+                if NumUID and NumUID == tonumber(UID) then continue end --* number comparison faster than string
                 table.insert(UIDsT, BodyCFPart.Name)
             end
-            if #UIDsT <= 0 then CombatController.TriggerAction(UID, "Release"); return end
+            if #UIDsT <= 0 then CombatController.TriggerAction(UID, "Release"); FA:SendMessage("LockMove"); return end --* no Hits
             local DetectedUIDs  = HB.BufferTableResults(UIDsT, 0, 1)
-            --TODO buffer ServerFrame into it
-            --* Send to CombatScript ?? and then Send it From there to NPCombatUtil
-            NPCCombatUtil.ApplyDamage(UID, DetectedUIDs, 0)
+            UID = tostring(UID) -- change back to string cos look below
+            NPCCombatUtil.ApplyDamage(UID, DetectedUIDs, 0, TypeHit, ItemData)
             FA:SendMessage("LockMove")
+            CombatController.TriggerAction(UID, "Release");
         end)
+        
+        local Length = 7
+        local StateBuffer = CREATE_PLAYER_STATE(Length, UID, 4, 13)
+        StateBuffer = BufferDir(CFV, StateBuffer, 5)
+        MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
     end,
     ["Release"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
-        CombatController.ChangeToOldState(UID)
+        local OldState = CombatController.ChangeToOldState(UID)
         local Length = 5
-        local StateBuffer = buffer.create(Length)
-        local Writeu8 = buffer.writeu8
-        Writeu8(StateBuffer, 0, Length)
-        buffer.writestring(StateBuffer, 1, UID, 1)
-        Writeu8(StateBuffer, 2, 4) --*LightAttack
-        Writeu8(StateBuffer, 3, 19)--*Release       
+        local StateNum = Encyclopedia.GiveNumRef(OldState)        
+        local StateBuffer = CREATE_PLAYER_STATE(Length, UID, StateNum, 25)
         MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
+    end,
+    ["SoftStun"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
+        CombatController.ChangeState(UID, "SoftStun", "WeaponOut")
+        CombatController.TriggerAction(UID, "Stun", ...)
     end
 }
 HitDummyFSM["TrueStun"] = {
@@ -119,19 +139,26 @@ HitDummyFSM["TrueStun"] = {
         local WeaponData = ItemDataMod.GiveCopyData(ItemName)
         if not WeaponData then warn("invalid Item Name: ", WeaponData); return end 
         StateMachine.TStun = task.delay((WeaponData.Stun +2) /2, function()  CombatController.TriggerAction(UID, "Release") end)
+        local StateBuffer = CREATE_PLAYER_STATE(6, UID, 7, 20)
+        buffer.writeu8(StateBuffer, 5, AttackerUID)
+        SendToCombat("UpdWithFrame", 4, StateBuffer)
     end,
-    ["Release"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, AttackerUID , WeaponData: SharedTypes.ItemDataMod, ...)
+    ["Release"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, AttackerUID , WeaponData: SharedTypes.ItemData, ...)
         local FA:Actor = Character_Controller["FA"] 
         FA:SendMessage("LockMove")
         CombatController.ChangeToOldState(UID)
+
+        local Length = 5
+        local StateNum = Encyclopedia.GiveNumRef(StateMachine.CurrentState)        
+        local StateBuffer = CREATE_PLAYER_STATE(Length, UID, StateNum, 25)
+        MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
     end, 
 }
 HitDummyFSM["SoftStun"] = {
     ["Stun"]= function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ItemName, AttackerUID, ClientFrame,  ...)
-        local CA = StateMachine.CurrentAction
-        if CA then CTask.Cancel(CA) end
+        if StateMachine.CurrentAction then CTask.Cancel(StateMachine.CurrentAction) end
         if StateMachine.SStun then task.cancel(StateMachine.SStun); StateMachine.SStun = nil  end
-        MessageAPI.SendToHealth("SendMessage", "TakeDamage", UID, ItemName, AttackerUID)
+        MessageAPI.SendToHealth("SendMessage", "TakeDamage", UID, ItemName, AttackerUID)        
         local FA:Actor = Character_Controller["FA"] 
         local WeaponData = ItemDataMod[ItemName]
         if not WeaponData then warn("invalid Item Name: ", WeaponData); return end 
@@ -140,9 +167,19 @@ HitDummyFSM["SoftStun"] = {
             FA:SendMessage("LockMove")        
             CombatController.TriggerAction(UID, "Release") 
         end)
+        local StateBuffer = CREATE_PLAYER_STATE(6, UID, 6, 20)
+        buffer.writeu8(StateBuffer, 5, AttackerUID)
+        SendToCombat("UpdWithFrame", 4, StateBuffer)
+    end,
+    ["SoftStun"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
+        CombatController.TriggerAction(UID, "Stun", ...)
     end,
     ["Release"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
         CombatController.ChangeToOldState(UID)
+        local Length = 5
+        local StateNum = Encyclopedia.GiveNumRef(StateMachine.CurrentState)        
+        local StateBuffer = CREATE_PLAYER_STATE(Length, UID, StateNum, 25)
+        MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
     end
 }
 return HitDummyFSM

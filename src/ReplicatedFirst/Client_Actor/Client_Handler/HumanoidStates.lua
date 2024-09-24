@@ -16,12 +16,13 @@ local Buffer_Converter = require(Shared.Buffer_Converter)
 type CustomHumanoid = SharedTypes.CustomHumanoid
 type Events = RemoteEvent --| UnreliableRemoteEvent
 type Machine = SharedTypes.Machine
---/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
--- //////////////////////////////////////////// new rule added CharacterName and UID are equal ////////////////////////////////////////////////////////////
---/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+--* /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+--* /////////////////////////////////////////// new rule:  CharacterName and UID are equal ////////////////////////////////////////////////////////////
+--* /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 local HumanoidStates = {
     ["Walk"] = {
         StopWalk = function(HumanoidMachine: Machine, Character: Model, Event: Events, EndPos: Vector3?)
+            if not Event then warn("HOW"); return end
             local UID = Character.Name
             local Humanoid: CustomHumanoid = HumanoidMachine[UID]
             if not  Humanoid then return end
@@ -32,12 +33,13 @@ local HumanoidStates = {
             HumanoidMachine.ChangeState(UID, "Idle")
         end,        
         StartWalk = function(HumanoidMachine: Machine, Character: Model, Event: Events, RelativeDirCF: CFrame)task.desynchronize()
+            if not Event then warn("HOW"); return end
             local UID = Character.Name
             local WS =  Character:GetAttribute("WalkSpeed")
             local Humanoid: CustomHumanoid = HumanoidMachine[UID]
             if not Humanoid.IsWalking then task.synchronize(); Humanoid.Walk:Play(); Humanoid.IsWalking = true; Humanoid.Walk:AdjustSpeed(WS/10) end
-            local b:buffer = Buffer_Converter.PosWriter(RelativeDirCF.Position, RelativeDirCF.LookVector, RelativeDirCF.UpVector)
-            if Event then   Event_Manager:RawFireToServer(Event, b) end
+            local b:buffer = Buffer_Converter.CF_Write_Buffer(RelativeDirCF)
+            if Event then task.synchronize(); Event:FireServer(b)  end
             
             local OtherProfile: CharacterHandler.Profile = CharacterHandler.GiveProfile(UID)
             if not OtherProfile then warn("no OtherProfile"); return end

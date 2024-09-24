@@ -25,11 +25,14 @@ Humanoid_Manager
     end
     return Character_Controller
 ]]
+local InventoryLogic = require(script.InventoryLogic)
+
 local MovementLogic = require(script.MovementLogic)
 local CombatLogic = require(script.CombatLogic)
 local CollectionService = game:GetService("CollectionService")
 local Replicatedstorage = game:GetService("ReplicatedStorage")
 local RateLimiter = require(Replicatedstorage.Shared.RateLimiter)
+
 
 local Character_Controller = {
 -- ["Actor"]
@@ -48,16 +51,19 @@ local Connections: { [string]: (Player, buffer, ...any) -> nil? } = {
     ["Tool"]= CombatLogic.Tool,
     ["Run"]= CombatLogic.Run,
     ["StopRun"]= CombatLogic.StopRun,
-    ["Detect"] = CombatLogic.ApplyDamage
+    ["Inventory"] = InventoryLogic.Recieve
 }
 function Character_Controller:InitEvents(PlayerName, CharacterActor)
-    local Events = { "Walk", "Jump","StopWalk","M1","M2","Block", "StopBlock", "Skill", "Tool", "Run", "StopRun", "Detect"}
+    local Events = { 
+        "Walk", "Jump","StopWalk","M1","M2","Block", "StopBlock", "Skill", "Tool", "Run", "StopRun", "Inventory"
+    }
     local CharacterEvents = Instance.new("Folder")
     CharacterEvents.Name = "CharacterEvents"
     CharacterEvents.Parent =  Character_Controller["Actor"]
     for _, EventNames in Events do
         local CharacterEvent = Instance.new("UnreliableRemoteEvent")
         CharacterEvent.Name = EventNames
+        -- print(EventNames, InventoryLogic, Connections[EventNames])
         CharacterEvent.OnServerEvent:ConnectParallel(Connections[EventNames])
         CharacterEvent.Parent = CharacterEvents 
     end

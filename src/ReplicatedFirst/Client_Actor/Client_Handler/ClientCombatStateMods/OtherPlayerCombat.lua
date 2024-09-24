@@ -2,7 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
 
 
-local SkillsHandler = require(Shared.SkillsHandler)
+
 local Encyclopedia = require(Shared.Encyclopedia)
 local SharedTypes = require(Shared.SharedType)
 local AnimHandler = require(Shared.AnimHandler)
@@ -13,13 +13,15 @@ local NumToSymbol = require(Shared.NumToSymbol)
 local ItemManager = require(Shared.ItemManager)
 
 local ClientActor = script.Parent.Parent
+local SkillsHandler = require(ClientActor.SkillsHandler)
 local CharacterHandler = require(ClientActor.Character_Handler)
-local Gui_Handler = require(ClientActor.Gui_Handler)
-local ClientMessage = require(ClientActor.Parent.ClientMessageAPI)
+-- local Gui_Handler = require(ClientActor.Gui_Handler)
+-- local ClientMessage = require(ClientActor.Parent.ClientMessageAPI)
+local Particle_Handler = require(ClientActor.SkillsFolder.Particle_Handler)
 
 type CombatMod = SharedTypes.ClientCombatMachine
 type FSM = SharedTypes.ClientStateMachine
-type ItemDataMod = SharedTypes.ItemDataMod
+type ItemDataMod = SharedTypes.ItemData
 local OtherPlayerCombat = {
     ["WeaponOut"] = {},
     ["Idle"] = {},
@@ -57,8 +59,8 @@ end
 
 --* ToolHandle
 WeaponOut["ToolHandle"] =function(ClientCombatMachine:CombatMod, StateMachine:FSM, Character:Model, Event:UnreliableRemoteEvent, MyFrame, StateBuffer:buffer, ...)
-    local ActiveHotbar:string = StateMachine.ActiveHotbar -- HotBar1 or HotBar2
-    local Hotbar: {[string]: number}  = StateMachine[ActiveHotbar]
+    local ActiveToolbar:string = StateMachine.ActiveToolbar -- Toolbar1 or Toolbar2
+    local Hotbar: {[string]: number}  = StateMachine[ActiveToolbar]
     local Key= buffer.readu8(StateBuffer, 1)
     local ItemChosenNum = Hotbar[Key]
     if not ItemChosenNum then warn("no item: ", Key); return end
@@ -78,15 +80,15 @@ WeaponOut["ToolHandle"] =function(ClientCombatMachine:CombatMod, StateMachine:FS
     local Char = Character  
     local RHGrip: Motor6D = Char.RightHand.RightGrip
     local PhysicalItem = StateMachine.CurrentPhysicalItem 
-    ItemManager.TweenUnequip(RHGrip, PhysicalItem, Character, Humanoid.Animator)
+    ItemManager.TweenUnequip(RHGrip, PhysicalItem, Character, Humanoid.Animator, StateMachine)
     StateMachine.CurrentPhysicalItem= nil
     StateMachine.CurrentItem = nil
     StateMachine.Anims = {}
     ClientCombatMachine.ChangeState(UID, "Idle", "Idle")    
 end
 Idle["ToolHandle"] =function(ClientCombatMachine:CombatMod, StateMachine:FSM, Character:Model, Event:UnreliableRemoteEvent, MyFrame, StateBuffer:buffer, ...)
-    local ActiveHotbar:string = StateMachine.ActiveHotbar -- HotBar1 or HotBar2
-    local Hotbar: {[string]: number}  = StateMachine[ActiveHotbar]
+    local ActiveToolbar:string = StateMachine.ActiveToolbar -- Toolbar1 or Toolbar2
+    local Hotbar: {[string]: number}  = StateMachine[ActiveToolbar]
     local Key= buffer.readu8(StateBuffer, 1)
     local ItemChosenNum = Hotbar[Key]
     if not ItemChosenNum then warn("no item: ", Key); return end
@@ -107,7 +109,7 @@ Idle["ToolHandle"] =function(ClientCombatMachine:CombatMod, StateMachine:FSM, Ch
     local Char = Character  
     local RHGrip: Motor6D = Char.RightHand.RightGrip
     local GetWeaponAnims = false
-    ItemManager.TweenEquip(RHGrip, PhysicalItem, Character, Humanoid.Animator)
+    ItemManager.TweenEquip(RHGrip, PhysicalItem, Character, Humanoid.Animator, StateMachine)
     StateMachine.CurrentPhysicalItem = PhysicalItem
     StateMachine.Anims = {}
 
@@ -147,6 +149,7 @@ SStun["Stun"] = function(ClientCombatMachine:CombatMod, StateMachine:FSM, Charac
         ForwardActor:SendMessage("OldWS")
         ClientCombatMachine.TriggerAction(Character, Event, "Release")
     end)
+    Particle_Handler.Hurt(Character)
 end
 SStun["Release"] = function(ClientCombatMachine:CombatMod, StateMachine:FSM, Character:Model, Event:UnreliableRemoteEvent, ItemDataMod:ItemDataMod, ...)
     ClientCombatMachine.ChangeToOldState(Character.Name)

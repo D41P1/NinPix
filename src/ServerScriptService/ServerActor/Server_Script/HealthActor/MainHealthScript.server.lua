@@ -50,8 +50,9 @@ Actor:BindToMessageParallel("Init", function()
     end)        
 end)
 Actor:BindToMessageParallel("NewHealth", function(UID:string, b:buffer, Health: number) -- they reply with this
+    UID = tostring(UID)
     local Prof:ActorTable = Actors[UID]
-    if not Prof then warn("incorrect UID For Health: ", UID); return end 
+    if not Prof then warn("incorrect UID For Health: ", UID, typeof(UID),Actors); return end 
     Prof.Health = Health
     local T = {
         ["UID"] = UID,
@@ -74,6 +75,7 @@ Actor:BindToMessage("Create", function(UID:string, Health: number)
     local b = buffer.create(2)
     buffer.writeu16(b, 0, Health)
     task.delay(1, function()
+        if not CharHealthActor then return end --* they could leave fast
         CharHealthActor:SendMessage("Init", UID, Health)
         task.wait(1)
         CharHealthActor:SendMessage("StartRegen", UID, Health)
@@ -81,15 +83,22 @@ Actor:BindToMessage("Create", function(UID:string, Health: number)
     HealthEvent:FireAllClients(b)
 end)
 Actor:BindToMessageParallel("SendMessage", function(Topic, UID:string, ...)  
+    UID = tostring(UID)
     local Prof:ActorTable = Actors[UID]
-    if not Prof then warn("No Prof For: ", UID); return end
+    if not Prof then warn("No Prof For: ", UID, typeof(UID)); return end
     Prof.Actor:SendMessage(Topic, ...)
 end)
+Actor:BindToMessageParallel("RespawnPlayer", function(UID:string)  
+    UID = tostring(UID)
+    local Prof:ActorTable = Actors[UID]
+    if not Prof then warn("No Prof For: ", UID, typeof(UID)); return end
+    Prof.Actor:SendMessage("ResetHealth")
+end)
 Actor:BindToMessageParallel("Cleanup", function(UID:string)  
+    UID = tostring(UID)
     local Prof:ActorTable = Actors[UID]
     if not Prof then warn("No Prof For: ", UID); return end
     Actors[UID] = nil
     task.synchronize()
     Prof.Actor:Destroy()
-    print("cleaned")
 end)

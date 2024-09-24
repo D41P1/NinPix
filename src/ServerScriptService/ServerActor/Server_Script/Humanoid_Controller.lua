@@ -1,7 +1,9 @@
 --!native
+--* FOR PLAYER humanoids only NPCs are handled differently
 --[[Info
 Humanoid Controller State Module for Humanoids server
 ]]
+
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 --local ServerScript = script.Parent
@@ -15,13 +17,8 @@ local Humanoid_Controller = {
     ["Walk"] = {
         StopWalk = function(HumanoidMachine: Machine, UID: string) task.desynchronize()
             HumanoidMachine.ChangeState(UID, "Idle")
-            --// local Humanoid: CustomHumanoid = HumanoidMachine[UID]
-            --// if not  Humanoid then return end
-            --// if Humanoid.MoveTracker then task.synchronize(); Humanoid.MoveTracker:Pause(); Humanoid.MoveTracker:Destroy(); Humanoid.MoveTracker = nil end
-            --// ServerRayMovement:CheckFalling(UID, HumanoidMachine, Humanoid)
         end,        
         StartWalk = function(HumanoidMachine: Machine, UID:string, Event: Events, CF: CFrame,  ForwardActor: Actor, DownwardsActor: Actor)
-            task.desynchronize()
             ForwardActor:SendMessage("StartForward", CF)
             DownwardsActor:SendMessage("StartDownward", CF)
         end,

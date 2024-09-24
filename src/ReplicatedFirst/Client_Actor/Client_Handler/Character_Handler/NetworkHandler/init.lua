@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
 local Event_Manager = require(Shared.Event_Manager)
 local BufferConverter = require(Shared.Buffer_Converter)
+
 local Network_Handler = {}
 
 type callMethod = { __call: (Table: MT, ... any) -> nil }
@@ -15,48 +16,23 @@ for Combat State add another reciever and event
 Add another hashmap on CharacterHandler 
 ]]
 function Network_Handler.Receiver(InfoBuffer: buffer)
-    --[[////////////////TODO rework this completely
-    now rec only Pos, Dir use that to interpolate and rollback 
-    --TODO also send ServerHumanoidState {
-        Then on Character Handler Create a Hashmap of the States functions {
-            ["Jump"] = functionend,
-            ["Walk"] = functionend,
-            --Fall, Idle etc
-        }
-    }  
-    ]]
-    -- local UID = Event_Manager.Read({"string"}, InfoBuffer)
-    local ReadS = buffer.readstring
-    local offset = 0
-    local Empty = string.char(0)
+    local Ru8 = buffer.readu8    
+    -- local Empty = string.char(0) = ""
     local Len = buffer.len(InfoBuffer)
-    for i = 1, Len, 25 do
-        -- if offset >= Len then warn("out of bounds: ", offset, Len); return end
-        local UID = ReadS(InfoBuffer, offset, 1)
-        offset += 1
-        local CF: CFrame = BufferConverter.PosReader(InfoBuffer, offset)
-        offset += 24
-        if UID == Empty then return end
+    for i = 0, Len, 9 do
+        if i + 1 >= Len then warn("out of bounds: ", i, Len); return end
+        local UID = Ru8(InfoBuffer, i); 
+        if UID == 0 then break end
+        local CF: CFrame = BufferConverter.CF_Read_Buffer(InfoBuffer, i+1)
         local Data = {
-            Func = "CheckMove",
-            UID = UID,
-            CurrentCF = CF,
+            ["Func"] = "CheckMove",
+            ["UID"] = tostring(UID),
+            ["CurrentCF"] = CF,
         }
         MT(Data)
     end
-
-    -- local Data = {
-    --     Func = "CheckMove",
-    --     UID = UID,
-    --     Pos = Pos,
-    --     Direction = Direction
-    -- }
-
-    -- MT(Data)
-    --DIrectly to CharacterHandler now Remove below
-    -- CommandHandler(CMD, InfoBuffer)
-    --//////////////////////////////////////
 end
+--[[ OLD Movement
 
 local Commands = {
     ["L"] = function (InfoBuffer: buffer) --Load
@@ -70,7 +46,7 @@ local Commands = {
             ["NetPartNumber"] = NetPartNumber,
             ["HipHeight"] = Hip,
             ["CurrentPos"] = CurrentPos
-            --[[ TODO later
+             TODO later
                 avatart = {
                     Hair,
                     Shirt,
@@ -78,13 +54,17 @@ local Commands = {
                     Face,
                     Accessory
                 }    
-            ]]
+            
         }
-        MT(Data)
+        -- MT(Data)
     end,
     ["M"] = function (InfoBuffer: buffer)
         local Refs = {"string", "buffer", "string", "Vector3"}
-        local _,  DirectionBuffer:buffer , UID: string, CurrentPos: Vector3?  = Event_Manager.Read(Refs, InfoBuffer)
+        local _,  DirectionBuffer:buffer , UID: string, CurrentPos: Vector3?
+        DirectionBuffer = buffer.create(12)
+        DirectionBuffer = buffer.copy(DirectionBuffer, 1, InfoBuffer, 12)
+
+        
         if CurrentPos == Vector3.zero then CurrentPos  = nil end
         Refs = {"number", "Vector3"}
         local _,  Direction: Vector3 = Event_Manager.Read(Refs, DirectionBuffer)
@@ -123,7 +103,7 @@ local Commands = {
         MT(Data)
     end
     -- REMOVE
-    --[[
+
     ["T"] = function (InfoBuffer: buffer) --Load
         local Refs = {"string",  "string", "Vector3"}
         local _,  UID:string, CurrentPos: Vector3? = Event_Manager.Read(Refs, InfoBuffer)
@@ -131,14 +111,14 @@ local Commands = {
         if CurrentPos == Vector3.zero then CurrentPos = nil end
     end,
         
-    ]]
-    
-    
+       
 }
 function CommandHandler(Cmd: string, ...)
-    if not Commands[Cmd] then return end
-    Commands[Cmd](...) 
+    -- if not Commands[Cmd] then return end
+    -- Commands[Cmd](...) 
 end
+
+]]
 return Network_Handler
 
 

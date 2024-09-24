@@ -8,6 +8,8 @@ export type CustomHumanoid = {
     IsLocked: string,
     MoveTracker: Tween?,
     Animator: Animator,
+    Motors: {Motor6D},
+    RagdollTime: thread?,
     MoveKeys: string,
     Mover: AnimationTrack,  --thread
     Walk: AnimationTrack,
@@ -54,7 +56,8 @@ export type CharacterEvents = {
     ["Tool"]: UnreliableRemoteEvent,
     ["Run"]: UnreliableRemoteEvent,
     ["StopRun"]: UnreliableRemoteEvent,
-    ["Detect"]: UnreliableRemoteEvent
+    ["Detect"]: UnreliableRemoteEvent,
+    ["Inventory"]:UnreliableRemoteEvent
 }
 export type CDTable = {
     ParryStart: number,
@@ -65,9 +68,9 @@ export type ClientStateMachine = {
     ["OldState"] : string,
     ["CurrentAction"] : AnimationTrack?,
     ["StateModule"]: any,
-    ["ActiveHotbar"]: string,
-    ["Hotbar1"]: any?,
-    ["Hotbar2"]: any?,
+    ["ActiveToolbar"]: string,
+    ["Toolbar1"]: any?,
+    ["Toolbar2"]: any?,
     ["CurrentItem"]: string?, -- Weapon, Skill, Misc
     ["CurrentPhysicalItem"]: Model?, 
     ["WeaponItem"]:string?,
@@ -75,6 +78,8 @@ export type ClientStateMachine = {
     ["TStun"]: thread?,
     ["Anims"]: {[number]: string},
     ["M1Count"]: number,
+    ["M1ResetTime"]:number,
+    ["Equipping"]: boolean?,
     ["CDs"]: CDTable,
 }
 export type NPCStateMachine = {
@@ -89,6 +94,7 @@ export type NPCStateMachine = {
     ["TStun"]: thread?,
     ["Anims"]: {[number]: string},
     ["M1Count"]: number,
+    ["M1ResetTime"]:number,
     ["CDs"]: CDTable,
 }
 
@@ -115,8 +121,9 @@ export type Profile = {
     Forward: Actor,
     Down: Actor,
     Detect: Actor,
+    StateNum:number?
 }
-export type ItemDataMod = {
+export type ItemData = {
     Height: number,
     Width: number,
     Range: number,
@@ -142,4 +149,40 @@ export type NPCData = {
     Weapon:string?
 }
 
+--* Avatar types
+export type Item_ColorInfo = {
+    Count:number,
+    R: number,
+    G: number,
+    B: number
+}
+export type RGBColor = {
+    R: number,
+    G: number,
+    B: number
+}
+export type PlayerInfo = {
+    Eyes: Item_ColorInfo,
+    Mouth: Item_ColorInfo,
+    Hair: Item_ColorInfo,
+    Shirt: Item_ColorInfo,
+    Pants: Item_ColorInfo,    
+    Skin: RGBColor
+}
+export type Color_Of_Items = {
+    Eyes: RGBColor,
+    Mouth: RGBColor,
+    Hair: RGBColor,
+    Shirt: RGBColor,
+    Pants: RGBColor,    
+    Skin: RGBColor
+}
+export type ChosenItemNumbers = {
+    Eyes: number,
+    Mouth: number,
+    Hair: number,
+    Shirt: number,
+    Pants: number,    
+    Skin: number
+}
 return nil
