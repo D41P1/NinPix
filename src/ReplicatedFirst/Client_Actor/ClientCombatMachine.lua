@@ -39,27 +39,7 @@ function ClientCombatMachine:InitMachine(Character, StateModule, Inventory_Toolb
         -- ["IsLocked"] = false
     }
     ClientCombatMachine[Character.Name] = StateMachine
-    print("inited ClientCombat machine: ", Character.Name, ClientCombatMachine)
-    local ReadU16 = buffer.readu16
-    local Keys = { "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight" }
-    local offset = 1 --* 0 is UID
-    StateMachine.Toolbar1 = {}
-    StateMachine.Toolbar2 = {}
-    for _, Key in Keys do
-        local NumberReference = ReadU16(Inventory_Toolbar, offset) 
-        if StateMachine.Toolbar1  then 
-            StateMachine.Toolbar1[Key] = NumberReference -- could be Item/Skill
-        end
-        offset += 2
-    end
-    for _, Key in Keys do
-        local NumberReference = ReadU16(Inventory_Toolbar, offset)
-        if StateMachine.Toolbar2 then 
-            StateMachine.Toolbar2[Key] = NumberReference -- could be Item/Skill
-        end
-        offset += 2
-    end
-
+    print("inited ClientCombat machine: ", Character.Name)
     return StateMachine
 end 
 function ClientCombatMachine:InitMPCMachine(Character, StateModule)

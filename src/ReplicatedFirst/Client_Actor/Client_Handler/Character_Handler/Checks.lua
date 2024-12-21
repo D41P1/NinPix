@@ -1,18 +1,18 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Shared = ReplicatedStorage.Shared
+-- local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- local Shared = ReplicatedStorage.Shared
 
-local Task = require(Shared.CustomTask)
-local Map_Manager = require(Shared.Map_Manager)
-local NetworkMap  = Map_Manager:GetMapType("NetworkHashMap")
+
+-- local Map_Manager = require(Shared.Map_Manager)
+-- local NetworkMap  = Map_Manager:GetMapType("NetworkHashMap")
 
 local Switches = {}
 
 local function NetworkPartitionCheck(Character: Model)
     if Switches["NetworkCheck"] then
-        Task.DelayParallel(12, function()
-            Map_Manager:NetworkPartitionCentrePosCheck(Character, NetworkMap)
-            NetworkPartitionCheck(Character)
-        end)
+        -- Task.DelayParallel(12, function()
+        --     Map_Manager:NetworkPartitionCentrePosCheck(Character, NetworkMap)
+        --     NetworkPartitionCheck(Character)
+        -- end)
     else
         Switches["NetworkCheck"] = nil
     end

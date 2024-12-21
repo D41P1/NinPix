@@ -124,6 +124,50 @@ local Read = function(TableOfReferences: { string }, buff: buffer)
 	end
 	return unpack(ReturnValues)
 end
+local function UnitVector_Buffer(LookVector:Vector3) --* UnitVector	
+	local WI16 = buffer.writei16
+	local X, Y, Z = LookVector.X, LookVector.Y, LookVector.Z
+	local AngleBuffer = buffer.create(2)	
+	local Atan2 = math.atan2
+	if X == 0 then 
+		--* Y-Z		
+		local Angle = Atan2(Z, Y)
+		WI16(AngleBuffer, 0, Angle*1000)
+	elseif Y == 0 then
+		--* X-Z
+		local Angle = Atan2(Z, X)
+		WI16(AngleBuffer, 0, Angle *1000)
+	elseif Z == 0 then
+		--* X-Y
+		local Angle = Atan2(Y, X)
+		WI16(AngleBuffer, 0, Angle *1000)
+	end	
+	
+	return AngleBuffer
+end
+local function Reader_UnitVector_Buffer(AngleBuffer:buffer, UpVector:Vector3, offset:number?)--* Send UV3V ONLY
+	-- read the AngleBuffer and convert it to its 2 inputs
+	local Needle = offset or 0
+	local RI16 = buffer.readi16
+	local Angle = RI16(AngleBuffer, Needle)
+	Angle *= 0.001
+	local X, Y, Z = UpVector.X, UpVector.Y, UpVector.Z
+	local i1, i2 = math.cos(Angle), math.sin(Angle)
+	local LookVector	
+	if X == 1 or X == -1 then 
+		--* Y-Z		
+		LookVector = Vector3.new(0, i1, i2).Unit
+	elseif Y == 1 or Y == -1 then
+		--* X-Z
+		LookVector = Vector3.new(i1, 0, i2).Unit		
+	elseif Z == 1 or Z == -1 then
+		--* X-Y
+		LookVector = Vector3.new(i1, i2, 0).Unit
+	end	
+	return LookVector 
+end
+
+--↓ outdated
 local CF_Write_Buffer = function(CF:CFrame, offset:number, b:buffer?): buffer
 	local Needle = offset or 0	
 	local Wi16 = buffer.writei16
@@ -210,11 +254,31 @@ local PosReader = function(buf, offset)
 
 	return CF
 end
+--↑
+local CF_Write = function(Made_CF_Buffer:buffer?, offset:number?, look_Vector_Buffer:buffer, Position:Vector3)
+	local Needle = offset or 0
+	local CF_Buffer = Made_CF_Buffer or buffer.create(8)
+	buffer.writei16(CF_Buffer, Needle, Position.X)
+	buffer.writei16(CF_Buffer, Needle + 2, Position.Y)
+	buffer.writei16(CF_Buffer, Needle + 4, Position.Z)
+	buffer.copy(CF_Buffer, Needle + 6, look_Vector_Buffer, 0, 2)
+	return CF_Buffer
+end
+local CF_Read= function(offset:number?, CF_Buffer:buffer, LookVector:Vector3, UpVector:Vector3):CFrame
+	--* get LookVector from Reader_Unit_Vector, UV3V.Value = UpVector
+	local Needle =  offset or 0
+	local Ri16 = buffer.readi16
+	local PosX, PosY, PosZ = Ri16(CF_Buffer, Needle), Ri16(CF_Buffer, Needle+2), Ri16(CF_Buffer, Needle+4)	
+	local Pos = Vector3.new(PosX, PosY, PosZ)
+	return CFrame.lookAlong(Pos, LookVector, UpVector)
+end
 BufferConverter.PosWriter = PosWriter
 BufferConverter.PosReader = PosReader
 BufferConverter.Read = Read
-BufferConverter["CF_Write_Buffer"] = CF_Write_Buffer
-BufferConverter["CF_Read_Buffer"] = CF_Read_Buffer
+BufferConverter["CF_Write_Buffer"] = CF_Write
+BufferConverter["CF_Read_Buffer"] = CF_Read 
+BufferConverter["UnitVector_Buffer"] = UnitVector_Buffer
+BufferConverter["Reader_UnitVector_Buffer"] = Reader_UnitVector_Buffer
 
 
 

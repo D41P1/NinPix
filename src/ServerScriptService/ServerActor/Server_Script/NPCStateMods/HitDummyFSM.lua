@@ -6,7 +6,7 @@ local Character_Controller = require(ServerScript.Character_Controller)
 local MessageAPI = require(ServerScript.MessageAPI)
 
 local Shared = ReplicatedStorage.Shared
-local Encyclopedia = require(Shared.Encyclopedia)
+local State_Dictionary = require(Shared.State_Dictionary)
 local ItemDataMod = require(Shared.ItemDataMod)
 local CTask = require(Shared.CustomTask)
 local SharedTypes = require(Shared.SharedType)
@@ -118,7 +118,7 @@ HitDummyFSM["LightAttack"] = {
     ["Release"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
         local OldState = CombatController.ChangeToOldState(UID)
         local Length = 5
-        local StateNum = Encyclopedia.GiveNumRef(OldState)        
+        local StateNum = State_Dictionary.GiveNumRef(OldState)        
         local StateBuffer = CREATE_PLAYER_STATE(Length, UID, StateNum, 25)
         MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
     end,
@@ -149,7 +149,7 @@ HitDummyFSM["TrueStun"] = {
         CombatController.ChangeToOldState(UID)
 
         local Length = 5
-        local StateNum = Encyclopedia.GiveNumRef(StateMachine.CurrentState)        
+        local StateNum = State_Dictionary.GiveNumRef(StateMachine.CurrentState)        
         local StateBuffer = CREATE_PLAYER_STATE(Length, UID, StateNum, 25)
         MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
     end, 
@@ -177,7 +177,7 @@ HitDummyFSM["SoftStun"] = {
     ["Release"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
         CombatController.ChangeToOldState(UID)
         local Length = 5
-        local StateNum = Encyclopedia.GiveNumRef(StateMachine.CurrentState)        
+        local StateNum = State_Dictionary.GiveNumRef(StateMachine.CurrentState)        
         local StateBuffer = CREATE_PLAYER_STATE(Length, UID, StateNum, 25)
         MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
     end

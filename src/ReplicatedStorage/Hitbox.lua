@@ -47,26 +47,26 @@ if RunService:IsServer()  then
 		return workspace:Raycast(Origin,Dir* Distance, ServerMapParams)
 	end	
 end
-function HB:BoxBounds(Character:Model, Origin:CFrame, Properties: Properties) task.synchronize()
+function HB:BoxBounds(Character:Model, Origin:CFrame, Properties: Properties)
+	task.synchronize()
 	OverParams.FilterType = Enum.RaycastFilterType.Include
 	OverParams.FilterDescendantsInstances = {workspace.Bodies} -- make it only bodies TODO
 
 	local Size = Vector3.new(Properties.Width, Properties.Height, Properties.Range)
 	local SpawnPoint = Origin * CFrame.new(0, 0, (-Properties.Range/2) +1)
 	local Results:{Instance} = workspace:GetPartBoundsInBox(SpawnPoint, Size, OverParams)
-	task.synchronize()
+	
 	if Results then return Results end		
     return	
 end
 function HB:GPB(Origin:CFrame, Properties: Properties, Filter: {Instance}?) task.synchronize()
-	task.desynchronize()
 	local Size:Vector3 = Vector3.new(Properties.Width, Properties.Height, Properties.Range)
 	local SpawnPoint:CFrame = Origin * CFrame.new(0, 0, (-Properties.Range/2) +1)
 	local Results:{Instance} = workspace:GetPartBoundsInBox(SpawnPoint, Size, HBParams)--* uses Diff Params
 	return Results 
 end
-function HB:NPCGPB(Origin:CFrame, Properties: Properties, Filter: {Instance}?) task.synchronize()
-	task.desynchronize()
+function HB:NPCGPB(Origin:CFrame, Properties: Properties, Filter: {Instance}?) 
+	task.synchronize()
 	local Size:Vector3 = Vector3.new(Properties.Width, Properties.Height, Properties.Range)
 	local SpawnPoint:CFrame = Origin * CFrame.new(0, 0, (-Properties.Range/2) +1)
 	local Results:{Instance} = workspace:GetPartBoundsInBox(SpawnPoint, Size, NPCParams) --* uses Diff Params
@@ -74,12 +74,12 @@ function HB:NPCGPB(Origin:CFrame, Properties: Properties, Filter: {Instance}?) t
 	return Results 
 end
 function HB:Raycasting(Origin:Vector3,  End:Vector3,   Distance:number) 	
-	task.desynchronize()
+	task.synchronize()
 	local Dir = (End - Origin).Unit	
 	return workspace:Raycast(Origin,Dir* Distance, RayParams)
 end
 function HB:BodyRaycasting(Origin:Vector3,  End:Vector3,   Distance:number) 	
-	task.desynchronize()
+	task.synchronize()
 	local Dir = (End - Origin).Unit	
 	return workspace:Raycast(Origin,Dir* Distance, HBParams)
 end

@@ -30,20 +30,21 @@ export type CombatController = {
 local CombatController = {}
 function CombatController:InitCombatMachine(UID: string, StateModule: any, HotBarInfo:buffer?)
     local UxMill = DateTime.now().UnixTimestampMillis
-    local StateMachine: SharedTypes.ClientStateMachine = { 
+    local StateMachine: SharedTypes.ServerCombat_Profile= { 
         ["CurrentState"] = "Idle",
         ["OldState"] = "Idle",
         ["Action"] = "Stand",
         ["StateModule"] = StateModule,
-        ["ActiveToolbar"] = "Toolbar1",
+        ["Allow_Hit"] = true,
         ["M1Count"] = 0,
         ["M1ResetTime"] = UxMill,
         ["Anims"] = {},
         ["CDs"] = {
             ["ParryCD"] = UxMill,
             ["ParryStart"] = UxMill
-        }
+        }, 
     }
+    --[[ --* OLD Toolbar system
     if HotBarInfo then 
         local ReadU16 = buffer.readu16
         local offset = 1 
@@ -63,6 +64,7 @@ function CombatController:InitCombatMachine(UID: string, StateModule: any, HotBa
             offset += 2
         end
     end
+    ]]
     CombatController[UID] = StateMachine
     return StateMachine
 end

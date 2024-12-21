@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
 local CollectionService = game:GetService("CollectionService")
 
-local Encyclopedia = require(Shared.Encyclopedia)
+local State_Dictionary = require(Shared.State_Dictionary)
 local SharedType = require(Shared.SharedType)
 
 local NPCCombatUtil = {}
@@ -24,7 +24,7 @@ do
         local Attackers_ItemName = AttackerSM.CurrentItem
         local AttackerCFV:CFrameValue = unpack(CollectionService:GetTagged(AttackerUID.."CFV"))
         if not AttackerCFV then warn("no CFV for NPC"); return end
-        local AttackersItemID = Encyclopedia.GiveNumRef(Attackers_ItemName)
+        local AttackersItemID = State_Dictionary.GiveNumRef(Attackers_ItemName)
         if not AttackersItemID then warn("incorrect Name for id: ", Attackers_ItemName); return end
         
         local BCreate = buffer.create
@@ -82,7 +82,7 @@ do
             Atan2Dir = Atan2Dir*1000
 
             Wi16(DirBuffer, 3, Atan2Dir)
-            local ItemId = Encyclopedia.GiveNumRef(Attackers_ItemName)
+            local ItemId = State_Dictionary.GiveNumRef(Attackers_ItemName)
             Wu16(DirBuffer, 5, ItemId)
             task.defer(function()
                 MessageAPI.SendToCombat("PushAlong", DirBuffer)    

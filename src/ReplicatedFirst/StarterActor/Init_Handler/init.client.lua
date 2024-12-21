@@ -1,7 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ContentService = game:GetService("ContentProvider")
 ContentService:PreloadAsync(ReplicatedStorage:GetDescendants())
-task.wait()
+task.wait(1)
 local FromServer = ReplicatedStorage:WaitForChild("FromServer")
 local player = game.Players.LocalPlayer
 local Client_Actor 

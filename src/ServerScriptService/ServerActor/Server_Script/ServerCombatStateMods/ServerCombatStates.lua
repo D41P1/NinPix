@@ -2,18 +2,22 @@
 --[[ --*Info on Module
 reason for Release function that just leads to actual release is cos sometimes i may not know which state they are in and i might need to release
 for example look at the combatlogic  ApplyDamage function
-]]
+
+    ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScript = script.Parent.Parent
-local CustomTask = require(script.Parent.Parent.Parent.Parent.Parent.Parent.ReplicatedStorage.Shared.CustomTask)
-local Hitbox = require(script.Parent.Parent.Parent.Parent.Parent.Parent.ReplicatedStorage.Shared.Hitbox)
-local CombatLogic = require(ServerScript.Character_Controller.CombatLogic)
-local Character_Controller = require(ServerScript.Character_Controller)
-local MessageAPI = require(ServerScript.MessageAPI)
 local Shared = ReplicatedStorage.Shared
+local CharacterScripts_Folder = ServerScript.Character_Scripts_Folder
+local Stats_Controller = require(ServerScript.Stats_Controller)
+local CombatLogic = require(CharacterScripts_Folder.CombatLogic)
+local Character_Controller = require(CharacterScripts_Folder.Character_Controller)
+local MessageAPI = require(ServerScript.MessageAPI)
+local SSS_Communicate = MessageAPI["MT"]
+
+local Hitbox = require(Shared.Hitbox)
 local ItemDataMod = require(Shared.ItemDataMod)
 local SharedTypes = require(Shared.SharedType)
-local Encyclopedia = require(Shared.Encyclopedia)
+local State_Dictionary = require(Shared.State_Dictionary)
 local NumToSymbol = require(Shared.NumToSymbol)
 local SendToCombat = MessageAPI.SendToCombat
 local CREATE_PLAYER_STATE = function(Length:number, UID, StateNum:number, ActionNum:number) 
@@ -28,6 +32,19 @@ local CREATE_PLAYER_STATE = function(Length:number, UID, StateNum:number, Action
     Writeu8(StateBuffer, 3, Action)
     return StateBuffer    
 end
+local Dead = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
+    CombatController.ChangeState(UID, "TrueStun")
+    CombatController.TriggerAction(UID, "Dead")
+end    
+local SoftStun= function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
+    CombatController.ChangeState(UID, "SoftStun")
+    CombatController.TriggerAction(UID, "Stun")
+end
+local TrueStun = function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
+    CombatController.ChangeState(UID, "TrueStun")
+    CombatController.TriggerAction(UID, "Stun")
+end
+
 local UPDATE_SERVER_COMBATTICK = function(Length:number, UID, StateNum:number, ActionNum:number, CurrentFrame:number) 
     local Message = "UpdateProfile"
     UID = tonumber(UID)
@@ -59,147 +76,68 @@ ServerCombatStates["WeaponOut"] = {
         CombatController.ChangeState(UID, "LightAttack", "WeaponOut")
         CombatController.TriggerAction(UID, "Light", ...)
     end,
-    ["ToolHandle"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, FrameBuffer: buffer)
-        local KeyPress = buffer.readu8(FrameBuffer, 1) --* 0 index is Frame
-        if KeyPress > 8 or KeyPress < 1 then return end
-        StateMachine.CurrentItem = nil
-        local Length = 6
-        local b = buffer.create(Length)
-        local Writeu8 = buffer.writeu8
-        local ClientFrame = buffer.readu8(FrameBuffer, 0)
-        Writeu8(b, 0, Length)
-        UID = tonumber(UID)
-        Writeu8(b, 1, UID)
-        Writeu8(b, 2, 2) --* WeaponOut
-        Writeu8(b, 3, 8) --* ToolHandle
-        Writeu8(b, 4, ClientFrame)
-        Writeu8(b, 5, KeyPress)
-        
-        MessageAPI.SendToCombat("UpdateProfile", b)
+    ["ToolHandle"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, FrameBuffer: buffer)        
         CombatController.ChangeState(UID, "Idle", "Idle")
     end,
     ["Block"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, FrameBuffer: buffer, ...)
         CombatController.ChangeState(UID, "Blocking", "WeaponOut")
         CombatController.TriggerAction(UID, "Guard", FrameBuffer, ...)
-        local ClientFrame = buffer.readu8(FrameBuffer, 0)
-        local StateNum = 3 --* Blocking
-        local ActionNum = 18 --* Guard
-        UPDATE_SERVER_COMBATTICK(5, UID, StateNum, ActionNum, ClientFrame)        
     end,
 }
 ServerCombatStates["Idle"] = {
     ["ToolHandle"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, FrameBuffer: buffer)
-        local KeyPress = buffer.readu8(FrameBuffer, 1)
-        if KeyPress > 8 or KeyPress < 1 then return end
-        local Hotbar = StateMachine[StateMachine.ActiveToolbar]
-        if not  Hotbar then warn("no ActiveToolbar: ", Hotbar, StateMachine); return end
         CombatController.ChangeState(UID, "WeaponOut", "WeaponOut")
-
-        local StringNum = NumToSymbol.GiveString(KeyPress)
-        local ItemNum = Hotbar[StringNum]
-        local Item = Encyclopedia[ItemNum]
-        StateMachine.CurrentItem = Item
-
-        local Length = 6
-        local b = buffer.create(Length)
-        local Writeu8 = buffer.writeu8
-        local ClientFrame = buffer.readu8(FrameBuffer, 0)
-        Writeu8(b, 0, Length)
-        UID = tonumber(UID)
-        Writeu8(b, 1, UID)
-        Writeu8(b, 2, 1) --* Idle
-        Writeu8(b, 3, 8) --* ToolHandle
-        Writeu8(b, 4, ClientFrame)
-        Writeu8(b, 5, KeyPress)
-        
-        MessageAPI.SendToCombat("UpdateProfile", b)
     end,
 }
 ServerCombatStates["HeavyAttack"] = {
     ["TrueStun"]= function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
-        CombatLogic.RemoveFromQ() --* so they cannot cheat the Q
         CombatController.ChangeState(UID, "TrueStun")
         CombatController.TriggerAction(UID, "Stun", ...)
     end,
     ["SoftStun"]= function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
-        CombatLogic.RemoveFromQ() --* so they cannot cheat the Q
         CombatController.ChangeState(UID, "SoftStun")
         CombatController.TriggerAction(UID, "Stun", ...)
     end,
-    ["Release"]= function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
-        --* releases from CombatLogic ApplyDamage (processing the Queue)
+    ["Release"]  = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
         local OldState = CombatController.ChangeToOldState(UID)
-        local Length = 5
-        local StateNum = Encyclopedia.GiveNumRef(OldState)        
-        local StateBuffer = CREATE_PLAYER_STATE(Length, UID, StateNum, 25)
-        MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
-        local FA:Actor = Character_Controller["FA"]
-        FA:SendMessage("LockMove")
+        local StateNum = State_Dictionary.GiveNumRef(OldState) 
+        SSS_Communicate("UpdCS", {UID, StateNum, 0})
+    end, 
+    ["Heavy"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
+        local StatsProfile = Stats_Controller.GiveProfile(UID)
+        local CPProfile =  Character_Controller.Give_Profile(UID)
+        local Amplifiers = {1.25} --* M2 does 25% more dps
+        local SwingSpeed_In_Seconds = StatsProfile.HBTime*0.001 * 1.5
+        SSS_Communicate("Single_HitBox", {UID, CPProfile.CFV, StateMachine, Amplifiers}, SwingSpeed_In_Seconds) --* takes 50% longer to swing but does 25% more damage
     end,
 }
 ServerCombatStates["LightAttack"] = {
     ["Light"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, StateBuffer: buffer, ...)
-        local CurrentItem = StateMachine.CurrentItem
-        local ItemData:SharedTypes.ItemData = ItemDataMod.GiveCopyData(CurrentItem)
-        if not ItemData then warn("no ItemData: ", CurrentItem); return end
-
+        local StatsProfile = Stats_Controller.GiveProfile(UID)
         local M1Count:number = StateMachine.M1Count
         local UnixMill = DateTime.now().UnixTimestampMillis
         M1Count += 1
-        if M1Count >= 4 then  M1Count = 1 end
         if  UnixMill - StateMachine.M1ResetTime > 1500  then --* been longer than a second since the last m1 
             M1Count = 1
         end
-        local TypeHit = 0
-        if M1Count == 3 then 
-            TypeHit = 1
-        end
         StateMachine.M1ResetTime = UnixMill
-        StateMachine.M1Count = M1Count
-        CombatLogic.AddtoQ(CurrentItem, TypeHit)
-        
-        local Ri16 = buffer.readi16 
-        local X, Z = Ri16(StateBuffer, 1), Ri16(StateBuffer, 3)
-        local LookDir = Vector3.new(X, 0, Z).Unit
-        local FA:Actor = Character_Controller["FA"]
-        FA:SendMessage("SetDir", LookDir) 
-        FA:SendMessage("LockMove", true)
-        local ClientFrame = buffer.readu8(StateBuffer, 4)
-        local CFV:CFrameValue =  Character_Controller["CFV"]
-        StateMachine.CurrentAction = CustomTask.DelayParallel(ItemData.HBTime/1000, function ()    
-            --* Task.delay after Q cos its an NPC
-            --* Apply Damage Here cos too slow to SendMessage for DetectedUIDs
-            local Results = Hitbox:NPCGPB(CFV.Value, ItemData)
-            local UIDsT = {}
-            for _, BodyCFPart in Results do  
-                local NumUID = tonumber(BodyCFPart.Name)
-                if NumUID and NumUID == tonumber(UID) then continue end --* number comparison faster than string
-                table.insert(UIDsT, BodyCFPart.Name)
-            end
-            if #UIDsT <= 0 then CombatController.TriggerAction(UID, "Release"); FA:SendMessage("LockMove"); return end --* no Hits
-            local DetectedUIDs  = Hitbox.BufferTableResults(UIDsT, 0, 1)
-            UID = tostring(UID) -- change back to string cos look below
-            CombatLogic.ApplyDamage(UID, DetectedUIDs, 0, TypeHit, ItemData)
-            FA:SendMessage("LockMove")
-            CombatController.TriggerAction(UID, "Release");
-        end)
-        UPDATE_SERVER_COMBATTICK(5, UID, 4, 13, ClientFrame)
+        StateMachine.M1Count = M1Count        
+        local CPProfile =  Character_Controller.Give_Profile(UID)
+        local Amplifiers = {}
+        local SwingSpeed_In_Seconds = StatsProfile.HBTime*0.001 
+        SSS_Communicate("Single_HitBox", {UID, CPProfile.CFV, StateMachine, Amplifiers}, SwingSpeed_In_Seconds)
+        warn("Add to single hitbox")
     end,
     ["TrueStun"]= function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
         CombatLogic.RemoveFromQ() --* so they cannot cheat the Q
         CombatController.ChangeState(UID, "TrueStun")
         CombatController.TriggerAction(UID, "Stun", ...)
     end,
-    ["Release"]= function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
-        --* releases from CombatLogic ApplyDamage (processing the Queue)
+    ["Release"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
         local OldState = CombatController.ChangeToOldState(UID)
-        local Length = 5
-        local StateNum = Encyclopedia.GiveNumRef(OldState)        
-        local StateBuffer = CREATE_PLAYER_STATE(Length, UID, StateNum, 25)
-        MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
-        local FA:Actor = Character_Controller["FA"]
-        FA:SendMessage("LockMove")
-    end,
+        local StateNum = State_Dictionary.GiveNumRef(OldState) 
+        SSS_Communicate("UpdCS", {UID, StateNum, 0})
+    end, 
     --[[
     ["ReleaseLightAttack"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
         local FA:Actor = Character_Controller["FA"] 
@@ -212,111 +150,50 @@ ServerCombatStates["LightAttack"] = {
 }
 ServerCombatStates["Skill"] = {}
 ServerCombatStates["TrueStun"] = {
-    ["Stun"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, AttackerUID, ItemName, Frame, ...)
-        local FA:Actor = Character_Controller["FA"] 
-        FA:SendMessage("LockMove", true)
-        MessageAPI.SendToHealth("SendMessage", "TakeDamage", UID, ItemName, AttackerUID)
-        if StateMachine.SStun then task.cancel(StateMachine.SStun); return end                  
-        if StateMachine.TStun then task.cancel(StateMachine.TStun); return end
-        local WeaponData = ItemDataMod.GiveCopyData(ItemName)
-        if not WeaponData then warn("invalid Item Name: ", WeaponData); return end 
-        StateMachine.TStun = task.delay((WeaponData.Stun +2) /2, function()  CombatController.TriggerAction(UID, "Release") end)
-        -- UPDATE_SERVER_COMBATTICK(5, UID, StateNum, ActionNum, nil, "UpdWithFrame")
-        if Frame then 
-            --*player hit player
-            local StateBuffer = CREATE_PLAYER_STATE(6, UID, 7, 20)
-            buffer.writeu8(StateBuffer, 5, AttackerUID)
-            SendToCombat("UpdateProfile", StateBuffer)
-            return
-        end
-        --* NPC hit Player
-        local StateBuffer = CREATE_PLAYER_STATE(6, UID, 7, 20)
-        buffer.writeu8(StateBuffer, 5, AttackerUID)
-        SendToCombat("UpdWithFrame", 4, StateBuffer)    
+    ["Stun"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, Extra_Data, ...)
+        SSS_Communicate("SoftStun", {UID, Extra_Data})        
+        SSS_Communicate("Health_Damage", {UID, Extra_Data})
+        SSS_Communicate("UpdCS", {UID, 7, 20})
     end,
-    ["GuardBroken"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, AttackerUID, ItemName, Frame, ...)
-        local FA:Actor = Character_Controller["FA"] 
-        FA:SendMessage("LockMove", true)
-        MessageAPI.SendToHealth("SendMessage", "TakeDamage", UID, ItemName, AttackerUID)
-        if StateMachine.SStun then task.cancel(StateMachine.SStun); return end                  
-        if StateMachine.TStun then task.cancel(StateMachine.TStun); return end
-        local WeaponData = ItemDataMod.GiveCopyData(ItemName)
-        if not WeaponData then warn("invalid Item Name: ", WeaponData); return end 
-        StateMachine.TStun = task.delay((WeaponData.Stun +2) /2, function()  CombatController.TriggerAction(UID, "Release") end)
-        if Frame then 
-            --*player hit player
-            local StateBuffer = CREATE_PLAYER_STATE(5, UID, 7, 24)
-            SendToCombat("UpdateProfile", StateBuffer)
-            return
-        end
-        --* NPC hit Player
-        local StateBuffer = CREATE_PLAYER_STATE(5, UID, 7, 24)
-        SendToCombat("UpdWithFrame", 4, StateBuffer)        
+    ["GuardBroken"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, Extra_Data:SharedTypes.Extra_Damage_Data,...)
+        SSS_Communicate("SoftStun", {UID, Extra_Data})      
+        local Guard_Amplifier = -0.4  -- * take 40% less damage from the GuardBroken damage
+        table.insert(Extra_Data.Amplifiers, Guard_Amplifier)
+        SSS_Communicate("Health_Damage", {UID, Extra_Data})
+        SSS_Communicate("UpdCS", {UID, 7, 24})
     end,
-    ["Release"]  = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, AttackerUID , WeaponData: SharedTypes.ItemData, ...)
-        local FA:Actor = Character_Controller["FA"] 
-        FA:SendMessage("LockMove")
-        CombatController.ChangeToOldState(UID)
-
+    ["Release"]  = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
         local OldState = CombatController.ChangeToOldState(UID)
-        local Length = 5
-        local StateNum = Encyclopedia.GiveNumRef(OldState)        
-        local StateBuffer = CREATE_PLAYER_STATE(Length, UID, StateNum, 25)
-        MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
+        local StateNum = State_Dictionary.GiveNumRef(OldState) 
+        SSS_Communicate("UpdCS", {UID, StateNum, 0})    
     end, 
     ["Dead"]= function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
-        local FA:Actor = Character_Controller["FA"] 
-        FA:SendMessage("LockMove", true)
-        MessageAPI.SendToSSS("RespawnPlayer", UID)
+        SSS_Communicate("Dead", {UID})
+        SSS_Communicate("RespawnPlayer", {UID})
     end,
 }
 ServerCombatStates["SoftStun"] = {
-    ["Stun"]= function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ItemName, AttackerUID, Frame,  ...)
-        if StateMachine.SStun then task.cancel(StateMachine.SStun); StateMachine.SStun = nil  end
-        local FA:Actor = Character_Controller["FA"] 
-        warn(ItemName)
-        local WeaponData = ItemDataMod[ItemName]
-        if not WeaponData then warn("invalid Item Name: ", WeaponData); return end 
-        MessageAPI.SendToHealth("SendMessage", "TakeDamage", UID, ItemName, AttackerUID)        
-        FA:SendMessage("LockMove", true)                 
-        StateMachine.SStun = task.delay(WeaponData.Stun, function()
-            FA:SendMessage("LockMove")        
-            CombatController.TriggerAction(UID, "Release") 
-        end)
-        if Frame then 
-            --*player hit player
-            local StateBuffer = CREATE_PLAYER_STATE(6, UID, 6, 20)
-            buffer.writeu8(StateBuffer, 5, AttackerUID)
-            SendToCombat("UpdateProfile", StateBuffer)
-            return
-        end
-        --* NPC hit Player
-        local StateBuffer = CREATE_PLAYER_STATE(6, UID, 6, 20)
-        buffer.writeu8(StateBuffer, 5, AttackerUID)
-        SendToCombat("UpdWithFrame", 4, StateBuffer)
+    ["Stun"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
+        SSS_Communicate("SoftStun", {UID, ...})        
+        SSS_Communicate("Health_Damage", {UID, ...})
+        SSS_Communicate("UpdCS", {UID, 7, 20})
     end,
     ["SoftStun"]= function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
         CombatController.TriggerAction(UID, "Stun")
     end,
-    ["Release"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
-        local FA:Actor = Character_Controller["FA"] 
-        FA:SendMessage("LockMove")                 
+    ["Release"]  = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
         local OldState = CombatController.ChangeToOldState(UID)
-        local Length = 5
-        local StateNum = Encyclopedia.GiveNumRef(OldState)        
-        local StateBuffer = CREATE_PLAYER_STATE(Length, UID, StateNum, 25)
-        MessageAPI.SendToCombat("UpdWithFrame", 4, StateBuffer)
+        local StateNum = State_Dictionary.GiveNumRef(OldState) 
+        SSS_Communicate("UpdCS", {UID, StateNum, 0})
+    end, 
+    ["Block"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, FrameBuffer: buffer, ...)
+        CombatController.ChangeState(UID, "Blocking", "SoftStun")
+        CombatController.TriggerAction(UID, "Guard", FrameBuffer, ...)
     end,
 }
 ServerCombatStates["Blocking"] = {
-    ["Guard"]= function(CombatController: CombatMachine, StateMachine: StateMachine, UID, StateBuffer: buffer, a, b,   ...)
-        if not StateBuffer then warn("no state buffer: ", StateBuffer, a, b); return end
-        local Ri16= buffer.readi16
-        local X, Z = Ri16(StateBuffer, 1), Ri16(StateBuffer, 3)
-        local LookDir = Vector3.new(X, 0, Z).Unit
-        local FA:Actor = Character_Controller["FA"]
-        FA:SendMessage("SetDir", LookDir) 
-        FA:SendMessage("LockMove", true)
+    ["Guard"]= function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
+        SSS_Communicate("UpdCS", {UID, 3, 18})
         StateMachine.CDs.ParryStart = DateTime.now().UnixTimestampMillis                
     end,
     ["SoftStun"]  = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
@@ -339,95 +216,66 @@ ServerCombatStates["Blocking"] = {
         end
         CombatController.TriggerAction(UID, "Blocked", ...)
     end,
-    ["Blocked"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ItemName, AttackerUID, Frame,  ...)
-        MessageAPI.SendToPosture("SendMessage", "TakeDamage", UID, ItemName, AttackerUID, Frame) 
-        if Frame then 
-            --*player hit player
-            local StateBuffer = CREATE_PLAYER_STATE(5, UID, 3, 17)
-            SendToCombat("UpdateProfile", StateBuffer)
-            return
-        end
-        --* NPC hit Player
-        local StateBuffer = CREATE_PLAYER_STATE(5, UID, 3, 17)
-        SendToCombat("UpdWithFrame", 4, StateBuffer)
-        --TODO KB move
+    ["Blocked"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, Extra_Data:SharedTypes.Extra_Damage_Data, ...)
+        SSS_Communicate("Posture_Damage", {UID, Extra_Data})
+        SSS_Communicate("UpdCS", {UID, 3, 17})
+        local CPProfile = Character_Controller.Give_Profile(UID)
+        CPProfile.FA:SendMessage("KBMove", Extra_Data)
+        print("Blocked the Hit")
     end,    
-    ["Parried"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ItemName, AttackerUID, Frame,  ...)
-        MessageAPI.SendToPosture("SendMessage", "TakeDamage", UID, ItemName, AttackerUID, Frame, true) 
-        if Frame then 
-            --*player hit player
-            local StateBuffer = CREATE_PLAYER_STATE(5, UID, 3, 16)
-            SendToCombat("UpdateProfile", StateBuffer)
-            return
-        end
-        --* NPC hit Player
-        local StateBuffer = CREATE_PLAYER_STATE(5, UID, 3, 16)
-        SendToCombat("UpdWithFrame", 4, StateBuffer)
+    ["Parried"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, Extra_Data:SharedTypes.Extra_Damage_Data, ...)
+        SSS_Communicate("Posture_Damage", {UID, Extra_Data})
+        SSS_Communicate("UpdCS", {UID, 3, 16})
+        local CPProfile = Character_Controller.Give_Profile(UID)
+        CPProfile.FA:SendMessage("KBMove", Extra_Data)
         print("Parried the Hit")
-        --TODO KB move
     end,
-    ["GuardBroken"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, AttackerUID, ItemName, Frame, ...)
+
+    ["GuardBroken"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
         CombatController.ChangeState(UID, "TrueStun")
-        CombatController.TriggerAction(UID, "GuardBroken", AttackerUID, ItemName)
+        CombatController.TriggerAction(UID, "GuardBroken", ...)
+    end,
+    --* "StopBlock" replaces "Release" reason Action "Release" is NOT here is bcos in SoftStun you can still Block 
+    ["StopBlock"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
+        local OldState = CombatController.ChangeToOldState(UID)
+        local StateNum = State_Dictionary.GiveNumRef(OldState) 
+        SSS_Communicate("UpdCS", {UID, StateNum, 0})
+        CombatController.ChangeToOldState(UID)
     end, 
-    ["StopBlock"] = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, FrameBuffer: buffer, ...)
-        local FA:Actor = Character_Controller["FA"] 
-        FA:SendMessage("LockMove")
-        local OldState = CombatController.ChangeToOldState(UID)  
-        local StateNum = Encyclopedia.GiveNumRef(OldState)
-        if not StateNum then warn("incorrect OldState ", StateNum, OldState); return end 
-        local ClientFrame = buffer.readu8(FrameBuffer, 4)
-        UPDATE_SERVER_COMBATTICK(5, UID, StateNum, 25, ClientFrame)
-    end,
 }
-do -- Dead
-    local Dead = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, ...)
-        CombatController.ChangeState(UID, "TrueStun")
-        CombatController.TriggerAction(UID, "Dead")
-    end    
-    ServerCombatStates.Blocking["TriggerDead"] = Dead
-    ServerCombatStates.WeaponOut["TriggerDead"] = Dead
-    ServerCombatStates.Idle["TriggerDead"] = Dead
-    ServerCombatStates.SoftStun["TriggerDead"] = Dead
-    ServerCombatStates.HeavyAttack["TriggerDead"] = Dead
-    ServerCombatStates.LightAttack["TriggerDead"] = Dead
-    ServerCombatStates.Skill["TriggerDead"] = Dead    
+ServerCombatStates.Blocking["TriggerDead"] = Dead
+ServerCombatStates.WeaponOut["TriggerDead"] = Dead
+ServerCombatStates.Idle["TriggerDead"] = Dead
+ServerCombatStates.SoftStun["TriggerDead"] = Dead
+ServerCombatStates.HeavyAttack["TriggerDead"] = Dead
+ServerCombatStates.LightAttack["TriggerDead"] = Dead
+ServerCombatStates.Skill["TriggerDead"] = Dead    
+
+ServerCombatStates.WeaponOut["SoftStun"] = SoftStun
+ServerCombatStates.Idle["SoftStun"] = SoftStun
+ServerCombatStates.TrueStun["SoftStun"] = SoftStun
+ServerCombatStates.Skill["SoftStun"] = SoftStun    
+ServerCombatStates.LightAttack["SoftStun"] = SoftStun    
+
+ServerCombatStates.WeaponOut["TrueStun"] = TrueStun
+ServerCombatStates.Idle["TrueStun"] = TrueStun
+ServerCombatStates.SoftStun["TrueStun"] = TrueStun
+ServerCombatStates.Skill["TrueStun"] = TrueStun
+
+--[[ --* Run and StopRun may get removed from the game
+local Run = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, FrameBuffer: buffer, WS)
+    local FA:Actor = Character_Controller["FA"] 
+    FA:SendMessage("AdjustWS", WS *2)
 end
-do -- Softstun
-    local SoftStun= function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
-        CombatController.ChangeState(UID, "SoftStun")
-        CombatController.TriggerAction(UID, "Stun")
-    end
-    ServerCombatStates.WeaponOut["SoftStun"] = SoftStun
-    ServerCombatStates.Idle["SoftStun"] = SoftStun
-    ServerCombatStates.TrueStun["SoftStun"] = SoftStun
-    ServerCombatStates.Skill["SoftStun"] = SoftStun    
-    ServerCombatStates.LightAttack["SoftStun"] = SoftStun    
-end
-do--TrueStun
-    local TrueStun = function(CombatController: CombatMachine, StateMachine: StateMachine, UID,  ...)
-        CombatController.ChangeState(UID, "TrueStun")
-        CombatController.TriggerAction(UID, "Stun")
-    end
-    
-    ServerCombatStates.WeaponOut["TrueStun"] = TrueStun
-    ServerCombatStates.Idle["TrueStun"] = TrueStun
-    ServerCombatStates.SoftStun["TrueStun"] = TrueStun
-    ServerCombatStates.Skill["TrueStun"] = TrueStun
-    
-end
-do-- Run StopRun
-    local Run = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, FrameBuffer: buffer, WS)
-        local FA:Actor = Character_Controller["FA"] 
-        FA:SendMessage("AdjustWS", WS *2)
-    end
-    local StopRun = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, FrameBuffer: buffer, WS)
-        local FA:Actor = Character_Controller["FA"] 
-        FA:SendMessage("AdjustWS", WS)
-    end 
-    ServerCombatStates.WeaponOut["Run"] = Run
-    ServerCombatStates.Idle["Run"] = Run
-    ServerCombatStates.WeaponOut["StopRun"] = StopRun
-    ServerCombatStates.Idle["StopRun"] = StopRun
-end
+local StopRun = function(CombatController: CombatMachine, StateMachine: StateMachine, UID, FrameBuffer: buffer, WS)
+    local FA:Actor = Character_Controller["FA"] 
+    FA:SendMessage("AdjustWS", WS)
+end 
+ServerCombatStates.WeaponOut["Run"] = Run
+ServerCombatStates.Idle["Run"] = Run
+ServerCombatStates.WeaponOut["StopRun"] = StopRun
+ServerCombatStates.Idle["StopRun"] = StopRun
+
+]]
+
 return ServerCombatStates

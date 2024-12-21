@@ -10,16 +10,16 @@ function ClientMessageAPI.InitClient(ActorParent)
     ForwardActor.ClientRayScript.Enabled = true
     ForwardActor.Parent = ActorParent
 
-    local DownActor = script.Parent.MoveActor:Clone()
-    DownActor.Name = "DownActor"
-    DownActor.ClientRayScript.Enabled = true
-    DownActor.Parent = ActorParent
+    -- local DownActor = script.Parent.MoveActor:Clone()
+    -- DownActor.Name = "DownActor"
+    -- DownActor.ClientRayScript.Enabled = true
+    -- DownActor.Parent = ActorParent
 
     local HBActor = script.Parent.MoveActor:Clone()
     HBActor.Name = "HBActor"
-    HBActor.DetectScript.Enabled = true
+    HBActor.ProceduralAnimationScript.Enabled = true
     HBActor.Parent = ActorParent
 
-    return ForwardActor, DownActor, HBActor
+    return ForwardActor,  HBActor
 end
 return ClientMessageAPI

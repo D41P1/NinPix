@@ -3,11 +3,11 @@ local Shared = ReplicatedStorage.Shared
 
 
 
-local Encyclopedia = require(Shared.Encyclopedia)
+local State_Dictionary = require(Shared.State_Dictionary)
 local SharedTypes = require(Shared.SharedType)
 local AnimHandler = require(Shared.AnimHandler)
 local HB = require(Shared.Hitbox)
---local Encyclopedia = require(Shared.Encyclopedia)
+
 local HumanoidMachine = require(Shared.HumanoidMachine)
 local NumToSymbol = require(Shared.NumToSymbol)
 local ItemManager = require(Shared.ItemManager)
@@ -72,10 +72,6 @@ WeaponOut["ToolHandle"] =function(ClientCombatMachine:CombatMod, StateMachine:FS
     
     local Humanoid:SharedTypes.CustomHumanoid = HumanoidMachine[UID]
     if not Humanoid then warn("no humanoid: ", UID); return end
-    Humanoid.Idle:Stop()
-    Humanoid.Idle:Destroy()
-    Humanoid.Idle = AnimHandler:LoadAnim("HumanoidIdle", Humanoid.Animator)
-    Humanoid.Idle:Play()
 
     local Char = Character  
     local RHGrip: Motor6D = Char.RightHand.RightGrip
@@ -92,17 +88,14 @@ Idle["ToolHandle"] =function(ClientCombatMachine:CombatMod, StateMachine:FSM, Ch
     local Key= buffer.readu8(StateBuffer, 1)
     local ItemChosenNum = Hotbar[Key]
     if not ItemChosenNum then warn("no item: ", Key); return end
-    local ItemName = Encyclopedia[ItemChosenNum]
+    local ItemName = State_Dictionary[ItemChosenNum]
     local UID = Character.Name
     local Humanoid:SharedTypes.CustomHumanoid = HumanoidMachine[UID]
     if not Humanoid then warn("no humanoid: ", UID); return end
     local IdleAnimName:string =ItemName.."Idle"
     local IdleAnim:Animation = AnimHandler:GetAnim(IdleAnimName)
     if not IdleAnim then IdleAnimName = "HumanoidIdle"; end
-    Humanoid.Idle:Stop()
-    Humanoid.Idle:Destroy()
-    Humanoid.Idle = AnimHandler:LoadAnim(IdleAnimName, Humanoid.Animator)
-    Humanoid.Idle:Play()
+    
     StateMachine.CurrentItem = ItemName
     local PhysicalItem: Model = ItemManager.GiveWeapon(ItemName)
     if not PhysicalItem then warn("no physical item: ", ItemName); return end 

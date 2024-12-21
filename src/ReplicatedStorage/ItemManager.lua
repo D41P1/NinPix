@@ -18,6 +18,7 @@ function Item_Manager.GiveWeapon(WeaponName: string)
     local CloneWeapon = Weapon:Clone()
     return CloneWeapon
 end
+--* the this Character Grip CFrame should not need to be changed instead just change the Weapon Model Grip CFrame in Explorer in Studio
 function Item_Manager.TweenEquip(RHGrip: Motor6D, PhysicalItem: Model, Character: Model, AC:Animator, FSM:SharedType.ClientStateMachine)
     if FSM.Equipping then return end
     FSM.Equipping = true

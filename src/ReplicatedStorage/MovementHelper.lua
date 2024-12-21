@@ -28,8 +28,15 @@ end
 	local CF = CFrame.lookAt(CharacterPos, Look, CharacterCF.UpVector)
 	CamLookModel.PrimaryPart.CFrame = CF
 ]]
+    
+local ProjectionVector = function(D:Vector3, N:Vector3)
+    return (D - (D:Dot(N) *N)).Unit
+end
+ 
 local RelativeDir = function(Character: Model,CamDirection:Vector3)
-	local Prim = Character.PrimaryPart
+    --[[
+    
+    local Prim = Character.PrimaryPart
     local CharacterPos = Prim.Position -- Replace with Character PrimaryPart  
 	local CharacterCF = Prim.CFrame -- ↑↑↑same here↑↑↑
 	local NRCF = CFrame.new(Vector3.zero) -- plain CF no Rotation
@@ -38,10 +45,87 @@ local RelativeDir = function(Character: Model,CamDirection:Vector3)
 
 	local NewCF = NoRotateCF * CFrame.new(CamDirection.X *150, 0, CamDirection.Z  *150)
 	local NewDir = (NewCF.Position - CharacterPos).Unit
-	local Look = CharacterPos +NewDir *150 
-	local CF = CFrame.lookAt(CharacterPos, Look, CharacterCF.UpVector)
-	return CF
+	-- local Look = CharacterPos +NewDir *150 
+	local CF = CFrame.lookAlong(CharacterPos, NewDir, CharacterCF.UpVector)
+	
+    ]]
+    local MoveBody = Character.PrimaryPart
+    local BodyCF = MoveBody.CFrame
+    local UpVector = BodyCF.UpVector
+    local Projection_Vector = ProjectionVector(CamDirection.Unit, UpVector)
+	local CF = CFrame.lookAlong(BodyCF.Position, Projection_Vector.Unit)
+    return CF
 end
+
+Movement_Helper["Walk"] = {
+    [2] = function(Character): Vector3 --* W
+        local CameraCFrame = Camera.CFrame
+        return CameraCFrame.LookVector  :: Vector3 
+    end,
+    [4] = function(Character): Vector3 --*A
+        local CameraCFrame = Camera.CFrame
+        return  -CameraCFrame.RightVector 
+    end,
+    [8] = function(Character): Vector3 --*S
+        local CameraCFrame = Camera.CFrame
+        return  -CameraCFrame.LookVector 
+    end, 
+    [16] = function(Character): Vector3 --*D
+        local CameraCFrame = Camera.CFrame
+        return  CameraCFrame. RightVector 
+    end,     
+    [6] = function(Character)
+        local CharacterPos = Character.PrimaryPart.CFrame.Position
+        local W, A = Movement_Helper.Walk[2](Character),  Movement_Helper.Walk[4](Character) 
+        local Wpos, Dpos = CharacterPos + W*5 , CharacterPos + A*5
+        local Midpoint: Vector3 = (Wpos + Dpos)/2
+        return (Midpoint - CharacterPos).Unit   
+    end,
+    [12] = function(Character)
+        local CharacterPos = Character.PrimaryPart.CFrame.Position
+        local S, A = Movement_Helper.Walk[8](Character),  Movement_Helper.Walk[4](Character) 
+        local Wpos, Dpos = CharacterPos + S*5 , CharacterPos + A*5
+        local Midpoint: Vector3 = (Wpos + Dpos)/2
+        return (Midpoint - CharacterPos).Unit   
+    end,
+    [18] = function(Character)
+        local CharacterPos: Vector3 = Character.PrimaryPart.CFrame.Position
+        local W, D = Movement_Helper.Walk[2](Character), Movement_Helper.Walk[16](Character) 
+        local Wpos, Dpos = CharacterPos + W*5 , CharacterPos + D*5
+        local Midpoint: Vector3 = (Wpos + Dpos)/2
+        return (Midpoint - CharacterPos).Unit   
+    end,
+    [24] = function(Character)
+        local CharacterPos = Character.PrimaryPart.CFrame.Position
+        local S, D = Movement_Helper.Walk[8](Character),  Movement_Helper.Walk[16](Character) 
+        local Wpos, Dpos = CharacterPos + S*5 , CharacterPos + D*5
+        local Midpoint: Vector3 = (Wpos + Dpos)/2
+        return (Midpoint - CharacterPos).Unit   
+    end,
+}
+-- Movement_Helper.Walk["DS"] = Movement_Helper.Walk.SD 
+-- Movement_Helper.Walk["DW"] = Movement_Helper.Walk.WD
+-- Movement_Helper.Walk["AS"] = Movement_Helper.Walk.SA 
+-- Movement_Helper.Walk["AW"] = Movement_Helper.Walk.WA 
+Movement_Helper.Jump = Movement_Helper.Walk
+
+function Movement_Helper:Move(Character, HumanoidState, Key) return Movement_Helper[HumanoidState][Key](Character) end
+-- function Movement_Helper:GiveDirection(Character, Key) 
+--     local Dir = Movement_Helper["Walk"][Key]
+--     if not Dir then return end
+--     local Direction:Vector3 = Dir(Character)
+--     return RelativeDir(Character, Direction) :: CFrame
+-- end
+
+
+function Movement_Helper:GiveDirection(Character, Number) 
+    local Dir = Movement_Helper["Walk"][Number]
+    if not Dir then return end
+    local Direction:Vector3 = Dir(Character)
+    return RelativeDir(Character, Direction) :: CFrame
+end
+--[[ --OLD system
+
 Movement_Helper["Walk"] = {
     W = function(Character): Vector3
         local CameraCFrame = Camera.CFrame
@@ -88,19 +172,13 @@ Movement_Helper["Walk"] = {
         return (Midpoint - CharacterPos).Unit   
     end,
 }
-
 Movement_Helper.Walk["DS"] = Movement_Helper.Walk.SD 
 Movement_Helper.Walk["DW"] = Movement_Helper.Walk.WD
 Movement_Helper.Walk["AS"] = Movement_Helper.Walk.SA 
 Movement_Helper.Walk["AW"] = Movement_Helper.Walk.WA 
 Movement_Helper.Jump = Movement_Helper.Walk
-function Movement_Helper:Move(Character, HumanoidState, Key) return Movement_Helper[HumanoidState][Key](Character) end
-function Movement_Helper:GiveDirection(Character, Key) 
-    local Dir = Movement_Helper["Walk"][Key]
-    if not Dir then return end
-    local Direction:Vector3 = Dir(Character)
-    return RelativeDir(Character, Direction) :: CFrame
-end
+
+]]
 
 return Movement_Helper
 --[[ info

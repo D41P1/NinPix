@@ -23,13 +23,12 @@ local OtherHumanoidStates = {
             if not Humanoid.IsWalking then return end
             task.synchronize()
             if Humanoid.MoveTracker then Humanoid.MoveTracker:Pause(); Humanoid.MoveTracker:Destroy() end
-            if Humanoid.Walk then  Humanoid.Walk:Stop(); Humanoid.IsWalking = false end
+            if Humanoid.Walk then  Humanoid.IsWalking = false end
         end,        
         StartWalk = function(HumanoidMachine: Machine, Character: Model)task.desynchronize()
             local UID = Character.Name
             local Humanoid: CustomHumanoid = HumanoidMachine[UID]
-            local function playAnim() task.synchronize(); Humanoid.Walk:Play(); Humanoid.IsWalking = true end
-            if not Humanoid.IsWalking then playAnim()  end
+            if not Humanoid.IsWalking then Humanoid.IsWalking = true  end
         end,
     },
     ["Idle"] = {

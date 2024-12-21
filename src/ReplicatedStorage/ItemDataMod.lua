@@ -1,8 +1,8 @@
-
 --[[ Some Info on Mod
 Fasterst it can go is 550 HBTime
 Anim:AdjustSpeed(1/(HBTime/1000)) = Simulating AttackSpeed
 Type is for Animations and SFX
+ItemType = "Weapon",
 all the Weapon Types so far {
 Sword
 HeavySword
@@ -11,96 +11,122 @@ Fist
 }
 ]]
 local ItemDataMod = {}
---* All KB for weapons must be 5<
---* All Range needs to be at least 2 studs bigger than their own KB
+--* All Knockback for weapons must be 5<
+--* All Range needs to be at least 2 studs bigger than their own Knockback
 ItemDataMod["Sword"] = {
     Type = "Sword",
+    ItemType = "Weapons",
+    ItemNumType = 2, --* Weapons
+
     Height = 8,
     EquipType = 7,
     Width = 8,
     Range = 12,
     Damage = 5,
-    Posture = 24, 
-    KB = 8,
+    MaxPosture = 12, 
+    Knockback = 8,
     HBTime = 650,
     Stun = 2,
 }
-ItemDataMod["RustySword"] = {
+ItemDataMod["Rusty.Sword"] = {
     Type = "Sword",
+    ItemType = "Weapons",
+    ItemNumType = 2, --* Weapons
     Height = 8,
     EquipType = 7,
     Width = 8,
     Range = 12,
     Damage = 6,
-    Posture = 24, 
-    KB = 7,
+    MaxPosture = 12, 
+    Knockback = 7,
     HBTime = 650,
     Stun = 2,
 }
-ItemDataMod["RustySabre"] = {
+ItemDataMod["Rusty.Sabre"] = {
     Type = "Sword",
+    ItemType = "Weapons",
+    ItemNumType = 2, --* Weapons
     Height = 12,
     EquipType = 7,
     Width = 10,
     Range = 12,
     Damage = 5,
-    Posture = 25, 
-    KB = 7,
+    MaxPosture = 13, 
+    Knockback = 7,
     HBTime = 650,
     Stun = 2,
 }
-ItemDataMod["RustyAxe"] = {
+ItemDataMod["Rusty.Axe"] = {
     Type = "HeavySword",
+    ItemType = "Weapons",
+    ItemNumType = 2, --* Weapons
     Height = 8,
     EquipType = 7,
     Width = 8,
     Range = 16,
-    Damage = 10,
-    Posture = 34, 
-    KB = 12,
+    Damage = 14,
+    MaxPosture = 17, 
+    Knockback = 12,
     HBTime = 850,
-    Stun = 2,
+    Stun = 2.5,
 }
-ItemDataMod["RustyDagger"] = {
+ItemDataMod["Rusty.Dagger"] = {
     Type = "Dagger",
+    ItemType = "Weapons",
+    ItemNumType = 2, --* Weapons
     Height = 8,
     EquipType = 7,
     Width = 10,
     Range = 10,
     Damage = 5,
-    Posture = 20, 
-    KB = 6,
+    MaxPosture = 10, 
+    Knockback = 6,
     HBTime = 550,
     Stun = 2,
 }
-ItemDataMod["RustyDusters"] = {
+ItemDataMod["Rusty.Dusters"] = {
     Type = "Fist",
+    ItemType = "Weapons",
+    ItemNumType = 2, --* Weapons
     Height = 8,
     EquipType = 7,
     Width = 8,
     Range = 10,
     Damage = 6,
-    Posture = 24, 
-    KB = 6,
+    MaxPosture = 12, 
+    Knockback = 6,
     HBTime = 550,
     Stun = 2,
 }
-ItemDataMod["ZabZaBlade"] = {
+ItemDataMod["Bandit.Mask"] = {
+    ItemType = "Armours",
+    ItemNumType = 1, --* Armours
+    ArmourType = 1, ---* Head Armour 1 -> 6
+    MaxPosture = 15, 
+    MaxHealth = 25
+}
+ItemDataMod["Bandit.Shirt"] = {
+    ItemType = "Armours",
+    ItemNumType = 1, --* Armours
+    ArmourType = 3, ---* Body Armour 1 -> 6
+    MaxPosture = 25, 
+    MaxHealth = 50
+}
+--* ↓↓↓↓↓↓↓↓↓ Endgame stuff ↓↓↓↓↓↓↓↓↓
+ItemDataMod["ZabZa.Blade"] = {
     Type = "HeavySword",
+    ItemType = "Weapons",
+    ItemNumType = 2, --* Weapons
     Height = 12,
-    EquipType = 7,
     Width = 15,
     Range = 17,
     Damage = 15,
-    Posture = 40, 
-    KB = 13,
+    MaxPosture = 20, 
+    Knockback = 11,
     HBTime = 800,
-    Stun = 2,
+    Stun = 2.5,
 }
-
-
-
-
+--* ↑↑↑↑↑↑↑↑↑↑ Endgame stuff ↑↑↑↑↑↑↑↑↑↑
 
 --[[ BodyTable
 1 = Head
@@ -112,26 +138,22 @@ ItemDataMod["ZabZaBlade"] = {
 7 = ToolBar
 ]]
 export type ItemData = {
+    MaxHealth:number,
     Height: number,
     Width: number,
     Range: number,
     Damage:number,
-    Posture: number,
-    KB: number,
+    MaxPosture: number,
+    Knockback: number,
     HBTime:number,
     Stun: number,
+    ItemType:string,
+    ItemNumType:number,
+    ArmourType:number,
     [string]: any
 }
-export type WeaponData = {
-    Height: number,
-    Width: number,
-    Range: number,
-    Damage:number,
-    KB: number,
-    HBTime:number,
-    Stun: number,
-    [string]: any
-}
+
+
 
 function ItemDataMod.GiveCopyData(ItemName:string) 
     local ItemInfo = ItemDataMod[ItemName]

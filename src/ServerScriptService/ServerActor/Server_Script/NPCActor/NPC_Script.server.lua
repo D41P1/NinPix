@@ -14,7 +14,7 @@ local SharedType = require(Shared.SharedType)
 local NPCInfo = require(Shared.NPCInfo)
 local HumanoidMachine = require(Shared.HumanoidMachine)
 local ItemDataMod = require(Shared.ItemDataMod)
-local Encyclopedia = require(Shared.Encyclopedia)
+local State_Dictionary = require(Shared.State_Dictionary)
 
 
 local UID  = NPCActor:GetAttribute("UID")
@@ -92,7 +92,7 @@ do
     local T = {["Blocking"] = true}
     NPCActor:BindToMessageParallel("Knockback", function(CurrentItem:string?, DirBuffer:buffer, ...)
         --TODO in future will have to do a Iframes Check or make it when they Activate Iframes disconnect the BindMessage   
-        local ItemName = CurrentItem or Encyclopedia.GiveString(buffer.readu16(DirBuffer, 1))
+        local ItemName = CurrentItem or State_Dictionary.GiveString(buffer.readu16(DirBuffer, 1))
         if not ItemName then warn("not itemName; ", CurrentItem);  return end
         local ItemdataCopy = ItemDataMod.GiveCopyData(ItemName)
         if not ItemdataCopy then warn("incorrect itemName: ", ItemName); return end 
@@ -114,7 +114,7 @@ do
         DownwardActor:SendMessage("Knockback", KB, DirBuffer, ...)
     end)
     NPCActor:BindToMessageParallel("Pushback", function(CurrentItem:string?, DirBuffer:buffer, ...)
-        local ItemName = CurrentItem or Encyclopedia.GiveString(buffer.readu16(DirBuffer, 1))
+        local ItemName = CurrentItem or State_Dictionary.GiveString(buffer.readu16(DirBuffer, 1))
         if not ItemName then warn("not itemName; ", CurrentItem, buffer.readu16(DirBuffer, 1));  return end
         local ItemdataCopy = ItemDataMod.GiveCopyData(ItemName)
         if not ItemdataCopy then warn("incorrect ITemName: ", ItemName); return end 

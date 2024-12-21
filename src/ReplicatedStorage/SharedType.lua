@@ -1,26 +1,23 @@
 --// local types = require(script.Parent.types)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
+local types = require(script.Parent.types)
 local ItemDataMod = require(Shared.ItemDataMod)
+
 export type CustomHumanoid = { 
     CurrentState: string,
     OldState: string,
     IsLocked: string,
     MoveTracker: Tween?,
     Animator: Animator,
-    Motors: {Motor6D},
+    Motors: {Motor6D}, --TODO remove
     RagdollTime: thread?,
     MoveKeys: string,
-    Mover: AnimationTrack,  --thread
     Walk: AnimationTrack,
     IsWalking: boolean,
-    Idle: AnimationTrack,
-    Fall: AnimationTrack,
-    Sprint: AnimationTrack,
-    Jump: AnimationTrack,
-    Landed: AnimationTrack,
     Falltracker: Tween?,
     StateMachine: {[string]: (any) -> any}
+    
 }
 export type Events = RemoteEvent? --| UnreliableRemoteEvent
 export type Machine =
@@ -57,7 +54,11 @@ export type CharacterEvents = {
     ["Run"]: UnreliableRemoteEvent,
     ["StopRun"]: UnreliableRemoteEvent,
     ["Detect"]: UnreliableRemoteEvent,
-    ["Inventory"]:UnreliableRemoteEvent
+    ["Inventory"]:UnreliableRemoteEvent,
+    ["MoveLook"]:UnreliableRemoteEvent,
+    ["WallRun"]:UnreliableRemoteEvent,
+    ["Dash"]:UnreliableRemoteEvent,
+    ["Everything"]:UnreliableRemoteEvent
 }
 export type CDTable = {
     ParryStart: number,
@@ -66,22 +67,50 @@ export type CDTable = {
 export type ClientStateMachine = {
     ["CurrentState"] : string,
     ["OldState"] : string,
-    ["CurrentAction"] : AnimationTrack?,
+    ["CurrentAction"] : thread?,
     ["StateModule"]: any,
-    ["ActiveToolbar"]: string,
-    ["Toolbar1"]: any?,
-    ["Toolbar2"]: any?,
-    ["CurrentItem"]: string?, -- Weapon, Skill, Misc
-    ["CurrentPhysicalItem"]: Model?, 
     ["WeaponItem"]:string?,
+    ["SStun"]: thread?,
+    ["TStun"]: thread?,
+    ["M1Count"]: number,
+    ["M1ResetTime"]:number,
+    ["CDs"]: CDTable,
+}
+export type ServerCombat_Profile = {
+    ["CurrentState"] : string,
+    ["OldState"] : string,
+    ["CurrentAction"] : thread?,
+    ["StateModule"]: any,
     ["SStun"]: thread?,
     ["TStun"]: thread?,
     ["Anims"]: {[number]: string},
     ["M1Count"]: number,
     ["M1ResetTime"]:number,
-    ["Equipping"]: boolean?,
     ["CDs"]: CDTable,
+    ["Allow_Hit"]:boolean
 }
+export type Character_Stats = {
+    Health: number,
+    Posture: number,
+    Stamina: number,
+    MaxHealth: number,
+    MaxPosture: number,
+    MaxStamina: number,
+    Range: number, 
+    Width: number, 
+    Height: number,
+    Knockback: number, 
+    Stun: number, 
+    Damage: number,
+    HBTime:number
+}
+export type Extra_Damage_Data = {
+    ["Attackers_Stats"]:Character_Stats,
+    ["CFV"]:CFrameValue,
+    ["Amplifiers"]:{number}
+}
+
+
 export type NPCStateMachine = {
     ["CurrentState"] : string,
     ["OldState"] : string,
@@ -113,15 +142,34 @@ export type ServerCombatMachine = {
     ForceState: (UID: string, NewState: string, OldState: string?) -> nil,
     ChangeToOldState: (UID: string) -> string 
 }
+export type Skill_Data = {
+    Range:number,
+    Width:number,
+    Height:number
+}
 export type Profile = {
     UID: string,
-    Actor: Actor,
-    Avatar: Model,
+    Avatar: typeof(workspace.WORKING_PROD_PixelDummy),
     Humanoid: CustomHumanoid,
     Forward: Actor,
     Down: Actor,
-    Detect: Actor,
-    StateNum:number?
+    Procedural: Actor,
+    FMV: NumberValue,
+    UV3V:Vector3Value,
+    MV3:Vector3Value,
+    LV3:Vector3Value,
+    VNV:NumberValue,
+    StateNum:number?,
+    JumpBool:boolean,
+    ToolBars:{{number}}, --* [ 1 -> 2 ] = { [1] -> [8]: ItemID}
+    BodyEquipped:{number},
+    Active_ToolBar:number,
+    CurrentBodyEquipped: {
+        [number]: Model
+    },
+    Current_Selected_Item:number,
+    CurrentItem: string?, -- Weapon, Skill, Misc
+    CurrentPhysicalItem: Model?, 
 }
 export type ItemData = {
     Height: number,
@@ -129,7 +177,7 @@ export type ItemData = {
     Range: number,
     Damage:number,
     Posture: number,
-    KB: number,
+    Knockback: number,
     HBTime:number,
     Stun: number,
     [string]: any

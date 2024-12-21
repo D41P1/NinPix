@@ -31,7 +31,6 @@ end
 How Inventory Saves
 first 32 bytes are u16 ids for what items are their in their tool bar 1-16 (0 - 30 +2)
 after that it shall be 
-
 32-42+2 6x16 6 cos 6 bodyparts it will only be Armours in here never weapons
 
 --* max slots will be 256
@@ -40,6 +39,10 @@ after that it shall be
 local RunService = game:GetService("RunService")
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local SScript = script.Parent
+local Character_Controller = require(SScript.Character_Scripts_Folder.Character_Controller)
+local InventoryLogic = require(SScript.Character_Scripts_Folder.InventoryLogic)
 local PlayerBan_Manager = require(script.Parent.PlayerBan_Manager)
 
 
@@ -51,10 +54,11 @@ local Pants = ReplicatedStorage.Pants
 
 local Data_Controller = {}
 export type DataBuffer = {
-    AvatarBuffer:buffer,
-    AvatarRGBBuffer:buffer,
+    -- AvatarBuffer:buffer,
+    -- AvatarRGBBuffer:buffer,
     InventoryBuffer:buffer,
     ActiveSlot_Num_Buffer:buffer,
+    ASL_Buffer:buffer, --* Account Session Lock
     [string]: buffer
 }
 export type DataProfiles = {
@@ -65,31 +69,55 @@ export type Slots = {
 }
 
 do 
+    local Player_Left_Queue = {}
     local Slots = {}
     local GlobalActiveSlotDS:DataStore
+    local AccountSessionLockDS:DataStore
     local Profiles:DataProfiles = {}
     --TODO make sure to keep updating the Save_allPlayers_Data when adding new things like inventory, stats etc
-    local Save_allPlayers_Data = function ()
-        task.synchronize()
-        local RHB= RunService.Heartbeat
-        print("starting For loop", Profiles)
+
+    local SavePlayer = function (PlayerName:string, UID:string)
+        local Player_Profile = Profiles[PlayerName]
+        if not Player_Profile then error("DID NOT SAVE No Data Profile: \n ".. PlayerName);  return end
+        local CCProfile = Character_Controller.Give_Profile(UID)
+        if not CCProfile then error("DID NOT SAVE CPProfile Incorrect UID  : \n ".. PlayerName); return end
+        local InventoryBuffer = InventoryLogic.Convert_To_Inventory_Buffer(CCProfile.Toolbars, CCProfile.BodyEquipped, CCProfile.CosmeticEquipped, CCProfile.Backpack)
+        local SlotNum = buffer.readu8(Player_Profile.ActiveSlot_Num_Buffer, 0)
+        local PlayerSlotDS:DataStore = Slots[SlotNum]
+        GlobalActiveSlotDS:SetAsync(PlayerName, Player_Profile.ActiveSlot_Num_Buffer)
+        PlayerSlotDS:SetAsync(PlayerName.."Inventory", InventoryBuffer)
+        -- PlayerSlotDS:SetAsync(PlayerName.."Avatar", Player_Profile.AvatarBuffer)
+        -- PlayerSlotDS:SetAsync(PlayerName.."AvatarRGB", Player_Profile.AvatarRGBBuffer)    
+        AccountSessionLockDS:SetAsync(PlayerName, Player_Profile.ASL_Buffer)
+    end
+    local GiveProfile = function(PlayerName:string)
+        return Profiles[PlayerName]
+    end
+    local Save_allPlayers_Data = function (PlayerLeft_Clone)
         for PlayerName, Player_Profile in Profiles do
             pcall(function()
                 task.synchronize()
-                local SlotNum = Player_Profile.ActiveSlot_Num
-                local PlayerSlotDS:DataStore = Slots[SlotNum]
-                print("saving")
-                GlobalActiveSlotDS:SetAsync(PlayerName, Player_Profile.ActiveSlot_Num)
-                RHB:Wait()
-                PlayerSlotDS:SetAsync(PlayerName.."Inventory", Player_Profile.InventoryBuffer)
-                RHB:Wait()
-                PlayerSlotDS:SetAsync(PlayerName.."Avatar", Player_Profile.AvatarBuffer)
-                RHB:Wait()
-                PlayerSlotDS:SetAsync(PlayerName.."AvatarRGB", Player_Profile.AvatarRGBBuffer)
-                print("saved no problems")
+                SavePlayer(PlayerName, PlayerLeft_Clone[2])
             end)
             task.wait(1)
         end
+    end
+    local Get_AccountSession_Info = function(player:Player): buffer
+        local AccInfo
+        local PlayerName = player.Name
+        local Success, Error = pcall(function(...)  
+            AccInfo = AccountSessionLockDS:GetAsync(PlayerName)
+        end)
+        if not Success then 
+            warn(Error)
+            warn("Could not get the Account session info of player: ", PlayerName)
+        end
+        if AccInfo == nil then  
+            local AccountSession_Buffer = buffer.create(5)
+            buffer.writef32(AccountSession_Buffer, 1, DateTime.now().UnixTimestamp)
+            AccInfo = AccountSession_Buffer
+        end
+        return AccInfo
     end
     local Get_ActiveSlot = function(player:Player): buffer
         local PlayerName = player.Name
@@ -109,7 +137,14 @@ do
     end
     local Get_SlotDS = function(ActiveSlotNumber:number)
         if Slots[ActiveSlotNumber]  then  return Slots[ActiveSlotNumber] end
-        Slots[ActiveSlotNumber] = DataStoreService:GetDataStore("ActiveSlot", "Slot"..ActiveSlotNumber)
+        local Success, Error = pcall(function(...)  
+            Slots[ActiveSlotNumber] = DataStoreService:GetDataStore("ActiveSlot", "Slot"..ActiveSlotNumber)
+        end)
+
+        if not Success then 
+            warn(Error)
+            warn("did not get the SlotDS: ", ActiveSlotNumber)
+        end
         return Slots[ActiveSlotNumber]
     end
     local Get_Player_Avatar_Data = function(player:Player, ActiveSlot_Num:number)
@@ -157,7 +192,8 @@ do
             local Inventory_Buffer: buffer? = PlayerActiveSlotDS:GetAsync(player.Name.."Inventory")
             if not Inventory_Buffer then 
                 --* player is new
-                Inventory = buffer.create(44) -- 0-30 toolbar 16xu16 32-42 6xu16 BodyFrame (44-1024_2xu16)
+                --* 0-30+2 toolbar 16xu16 ; 32-42+2  6xu16 BodyFrame; 44 -> 54+2 Cosmetic; (56+ u16xu16)
+                Inventory = buffer.create(56)
             else
                 Inventory = Inventory_Buffer
             end
@@ -200,6 +236,7 @@ do
     local Init = function()
         local Success, Error = pcall(function()  
             GlobalActiveSlotDS = DataStoreService:GetDataStore("ActiveSlot")
+            AccountSessionLockDS = DataStoreService:GetDataStore("AccountLock")
             GlobalActiveSlotDS:GetAsync("TEST")
         end)
         if not Success then 
@@ -214,8 +251,7 @@ do
             print("Data Store is working no Errors ")
         end
     end
-    local Player_Left_Queue = {}
-    do 
+    do --* saving loop
         local D, S = 0, 120 -- 0, 120 in PROD
         task.synchronize()
         RunService.Heartbeat:ConnectParallel(function(a0: number)  
@@ -225,21 +261,25 @@ do
                 print("Saving Players Data")
                 Save_allPlayers_Data()
                 local PlayerLeft_Clone = table.clone(Player_Left_Queue)
-                for i, PlayerNames in PlayerLeft_Clone do 
-                    Profiles[PlayerNames] = nil
+                for i, PlayerTable in PlayerLeft_Clone do 
+                    Profiles[PlayerTable[1]] = nil
+                    print(PlayerTable[1], PlayerTable[2])
                     table.remove(Player_Left_Queue, i)
                 end
             end
         end)
     end
-    local Cleanup = function(PlayerName:string)
-        table.insert(Player_Left_Queue, PlayerName)
+    local Cleanup = function(PlayerName:string, UID:string)
+        table.insert(Player_Left_Queue, {PlayerName, UID})
     end
     --* add the functions to the Module
     Data_Controller["init"] = Init
+    Data_Controller["GiveProfile"] = GiveProfile
+    Data_Controller["Get_AccountSession_Info"] = Get_AccountSession_Info
     Data_Controller["GetPlayerAvatarData"] = Get_Player_Avatar_Data
     Data_Controller["ChangePlayerAvatarData"] = ChangePlayerAvatarData
     Data_Controller["Save_allPlayers_Data"]= Save_allPlayers_Data
+    Data_Controller["SavePlayer"]= SavePlayer 
     Data_Controller["Cleanup"] = Cleanup
     Data_Controller["Add_To_Profiles"] = Add_To_Profiles
     Data_Controller["Get_Player_Inventory_Data"] = Get_Player_Inventory_Data
@@ -271,7 +311,7 @@ Slots Data Store {
 }
 Inventory Data Store {
     --*this Store will not be needed in the Main menu Starter Place
-    It would be a single buffer all u16 values and recieve via the Itemencyclopedia
+    It would be a single buffer all u16 values and recieve via the ItemState_Dictionary
     u16 Item , u16 Amount_of_that_Item (loop read in 4 bytes at a time)
     save up to 100 unique items --*gamepass to increase to 200 
 } 

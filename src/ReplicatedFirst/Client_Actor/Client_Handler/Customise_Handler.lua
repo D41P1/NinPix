@@ -12,14 +12,14 @@ local Hair = ReplicatedStorage.Hairs
 local Shirts  = ReplicatedStorage.Shirts
 local Pants = ReplicatedStorage.Pants
 
-local Character = workspace.PixChar_WithWelds
+-- local Character = workspace.PixChar_WithWelds
 
 
 local Customise_Handler = {}
 type Item_ColorInfo = SharedExports.Item_ColorInfo
 type RGBColor = SharedExports.RGBColor
 type PlayerInfo = SharedExports.PlayerInfo
-type char = typeof(Character)
+type char = typeof(workspace.WORKING_PROD_PixelDummy)
 local init = function(Data, Char: char)
     local EyesCount, MouthCount, HairCount, ShirtsCount ,PantsCount = 1, 1, 1, 1, 1    
     local CurrentEye, CurrentMouth, CurrentHair, CurrentShirt, CurrentPants 
@@ -205,7 +205,6 @@ local init = function(Data, Char: char)
         ColorFunc(CurrentEye, EyesR, EyesG, EyesB)
         ColorFunc(CurrentMouth, MouthR, MouthG, MouthB)
         ColorFunc(Char, SkinR, SkinG, SkinB)
-        print(CurrentShirt, CurrentPants, CurrentShirt.Parent,  CurrentShirt:GetChildren())
     end
     local function Remake(Char:char, NewData: SharedExports.PlayerInfo)
         local T = {

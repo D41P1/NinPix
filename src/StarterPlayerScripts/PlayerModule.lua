@@ -10,21 +10,21 @@ local PlayerModule = {}
 PlayerModule.__index = PlayerModule
 
 function PlayerModule.new()
-	local self = setmetatable({},PlayerModule)
-	self.cameras = require(script.Parent:WaitForChild("CameraModule"))
-	return self
+	-- local self = setmetatable({},PlayerModule)
+	-- self.cameras = require(script.Parent:WaitForChild("CameraModule"))
+	-- return self
 end
 
-function PlayerModule:GetCameras()
-	return self.cameras
-end
+-- function PlayerModule:GetCameras()
+-- 	return self.cameras
+-- end
 
-function PlayerModule:GetControls()
-	return self.controls
-end
+-- function PlayerModule:GetControls()
+-- 	return self.controls
+-- end
 
-function PlayerModule:GetClickToMoveController()
-	return self.controls:GetClickToMoveController()
-end
+-- function PlayerModule:GetClickToMoveController()
+-- 	return self.controls:GetClickToMoveController()
+-- end
 
-return PlayerModule.new()
+return nil

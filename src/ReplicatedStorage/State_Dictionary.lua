@@ -3,7 +3,8 @@ Every SKILL, WEAPON, MISC is given an i16 num representation
 Every ACTION and STATE is given a u8 num representation 
 for reduced networking
 ]]
-local Encyclopedia = {
+
+local State_Dictionary = {
     --* States
     [1] = "Idle",
     [2] = "WeaponOut",
@@ -33,15 +34,13 @@ local Encyclopedia = {
     [25] = "Return", --*Fodder Action used when ChangeToOldState is used
     --! ↑↑↑↑↑ u8
     --! ↓↓↓↓↓ u16
-    --* Item Name
-    [1000] = "Sword",
     --*NPCs
     [3000] = "Dummy",
     [3001] = "HitDummy", 
     [3002] = "ShadoMercenary"
 }
 local Dictionary = {}
-for num: number, String: string in Encyclopedia do  Dictionary[String] = num end
-function Encyclopedia.GiveString(Num:number) return Encyclopedia[Num] end
-function Encyclopedia.GiveNumRef(String:string) return Dictionary[String] end
-return Encyclopedia
+for num: number, String: string in State_Dictionary do  Dictionary[String] = num end
+function State_Dictionary.GiveString(Num:number) return State_Dictionary[Num] end
+function State_Dictionary.GiveNumRef(String:string) return Dictionary[String] end
+return State_Dictionary

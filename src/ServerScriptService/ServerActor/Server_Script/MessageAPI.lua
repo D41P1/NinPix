@@ -22,29 +22,34 @@ local MessageAPI = {
 function MessageAPI.SendToSSS(Topic: string, ...)
     SSSActor:SendMessage(Topic, ...)
 end
+--* i cba changing every Script where it mentions these functions
 function MessageAPI.SendToCombat(Topic: string, ...)
-    CombatActor:SendMessage(Topic, ...)
+    -- CombatActor:SendMessage(Topic, ...)
+    SSSActor:SendMessage(Topic, ...)
 end
 function MessageAPI.SendToHealth(Topic: string, ...)
-    HealthActor:SendMessage(Topic, ...)
+    -- HealthActor:SendMessage(Topic, ...)
+    SSSActor:SendMessage(Topic, ...)
 end
 function MessageAPI.SendToPosture(Topic: string, ...)
-    PostureActor:SendMessage(Topic, ...)
+    -- PostureActor:SendMessage(Topic, ...)
+    SSSActor:SendMessage(Topic, ...)
 end
 function MessageAPI.SendToRagdoll(Topic: string, ...)
-    RagdollActor:SendMessage(Topic, ...)
+    -- RagdollActor:SendMessage(Topic, ...)
+    SSSActor:SendMessage(Topic, ...)
 end
 
 local CharacterActors = {}
 local NPCActors = {}
 local Connections = {}
+--*OLD ↓
 function MessageAPI.InitSSS()
     local SSScript = SSSActor.Server_Script
     local Shared = ReplicatedStorage.Shared
     local Hitbox = require(Shared.Hitbox)
-    local Attributes_Controller = require(SSScript.Attributes_Controller)
+    local Stats_Controller = require(SSScript.Stats_Controller)
     local Util = require(script.Parent.Util)
-    local NetWorkController = require(SSScript.Network_Controller)    
     local ServerTick = require(SSScript.ServerTick)
     local NPCRunTimeFolder = SSScript.NPCRunTimeActors
     local SharedType = require(Shared.SharedType)
@@ -53,7 +58,7 @@ function MessageAPI.InitSSS()
     
     local NPCs = {
         ["ShadoMercenary"] = {
-            ["Max"] = 25, --*3 Prod for now
+            ["Max"] = 3, --*3 Prod for now
             ["Array"] = {}
         },
         ["Dummy"] = {
@@ -66,14 +71,7 @@ function MessageAPI.InitSSS()
         }
     }
     local NPCSpawnPoints = workspace.NPCSP
-    Connections["Network"] = SSSActor:BindToMessageParallel("Network", function(PlayerName, Partition,...)
-        local player: Player = MessageAPI.Players[PlayerName]
-        local CurrentPartition = Partition or NetWorkController:GetPartition(PlayerName)
-        NetWorkController:Fire(player, CurrentPartition, ...)
-    end)    
-    Connections["NetPart"] = SSSActor:BindToMessageParallel("NetPart", function(PlayerName, Partition,...)
-        NetWorkController:SetPartition(PlayerName, Partition)
-    end)
+    
     Connections["TriggerAction"] = SSSActor:BindToMessageParallel("TriggerAction", function(UID: string, ...)
         UID =  tostring(UID)
         local CharActor:Actor = CharacterActors[UID]
@@ -119,7 +117,7 @@ function MessageAPI.InitSSS()
             ["SpawnPoint"] = RR.Position,
             ["TypePathFinding"] = TypePathFinding,
             ["TypeFSM"] = TypeFSM,
-        ["Hip"] = Attributes_Controller.GiveHip(TypeOfNPC)
+        ["Hip"] = Stats_Controller.GiveHip(TypeOfNPC)
         }
         SSSActor:SendMessage("MakeNPC", UID, Data)
         table.insert(NPCs[TypeOfNPC].Array, UID)
@@ -181,19 +179,20 @@ function MessageAPI.InitSSS()
         end
 
     end)
+
 end
-function MessageAPI.InitServerCharacter(CharacterActor: Actor)    
+--*OLD ↑
+function MessageAPI.InitServerCharacter(CharacterScript: Script)    
     local ForwardActor = script.Parent.ServerMoveActor:Clone()
     ForwardActor.Name = "ForwardActor"
     ForwardActor.ServerRayScript.Enabled = true
-    ForwardActor.Parent = CharacterActor
+    ForwardActor.Parent = CharacterScript
 
-    local DownActor = script.Parent.ServerMoveActor:Clone()
-    DownActor.Name = "DownActor"
-    DownActor.ServerRayScript.Enabled = true
-    DownActor.Parent = CharacterActor
-
-    return ForwardActor, DownActor
+    -- local DownActor = script.Parent.ServerMoveActor:Clone()
+    -- DownActor.Name = "DownActor"
+    -- DownActor.ServerRayScript.Enabled = true
+    -- DownActor.Parent = CharacterScript
+    return ForwardActor
 end
 function MessageAPI.AddCharacterActor(CharActor: Actor)
     CharacterActors[CharActor.Name] = CharActor

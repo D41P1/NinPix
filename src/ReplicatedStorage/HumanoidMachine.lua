@@ -27,8 +27,8 @@ function HumanoidMachine:InitHumanoid(Character: typeof(workspace.PixelDummy), S
         ["CurrentState"] = "Idle",
         ["OldState"] = "Idle",
         ["MoveKeys"] = "",
-        ["Animator"] = Character.AC.Animator,
-        ["Motors"] = Character.Rag:GetChildren(),
+        -- ["Animator"] = Character.AC.Animator,
+        -- ["Motors"] = Character.Rag:GetChildren(),
         ["StateMachine"] = StateMachine
         -- ["IsLocked"] = false
     }
@@ -54,7 +54,7 @@ function HumanoidMachine.ServerTriggerAction(UID: string, Event: RemoteEvent?,  
     local Humanoid: StateMachine = HumanoidMachine[UID]
     if not Humanoid then warn("No StateMachine", Humanoid); return end
     local HumanoidStates = Humanoid.StateMachine
-    if not HumanoidStates[Humanoid.CurrentState][Action] then  return end    
+    if not HumanoidStates[Humanoid.CurrentState][Action] then  print("[Error 2] HM Server"); return end    
     HumanoidStates[Humanoid.CurrentState][Action](HumanoidMachine, UID, Event, ...)
 end
 function  HumanoidMachine.ChangeState(UID: string, NewState: string, OldState: string?)
@@ -82,7 +82,7 @@ function HumanoidMachine.ChangeHumanoidProperty(UID:string, Property:string, Val
 end
 function  HumanoidMachine.ChangeToOldState(UID: string)
     local Humanoid: SharedType.CustomHumanoid = HumanoidMachine[UID]
-    if not Humanoid then warn("No StateMachine", Humanoid); return end
+    if not Humanoid then error("No StateMachine"); return end
     Humanoid.CurrentState = HumanoidMachine[UID].OldState     
 end
 return HumanoidMachine
